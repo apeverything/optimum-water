@@ -4,43 +4,39 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>OW Field Sales</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:monospace;background:#111827;color:#f9fafb;height:100vh;display:flex;flex-direction:column;overflow:hidden}
 button{font-family:monospace;cursor:pointer}
 input,select,textarea{font-family:monospace}
 #map{flex:1;z-index:1}
-.hdr{background:#1f2937;border-bottom:2px solid #374151;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;z-index:1000;position:relative}
-.logo-box{width:30px;height:30px;background:#2563eb;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:white;flex-shrink:0}
+.hdr{background:#1f2937;border-bottom:2px solid #374151;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;z-index:1000;position:relative;flex-shrink:0}
 .statbar{background:#1a2332;border-bottom:1px solid #374151;padding:6px 14px;display:flex;gap:14px;align-items:center;overflow-x:auto;z-index:1000;position:relative;flex-shrink:0}
 .sheet{position:fixed;bottom:0;left:0;right:0;background:#1f2937;border-top:2px solid #2563eb;border-radius:16px 16px 0 0;padding:18px 16px 30px;z-index:2000;animation:up .22s ease;max-height:85vh;overflow-y:auto}
 @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:9px;height:9px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:middle}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1999}
-.inp{width:100%;background:#111827;border:1px solid #374151;border-radius:8px;color:#f9fafb;font-size:13px;padding:10px;outline:none;font-family:monospace}
-.lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-top:12px;margin-bottom:4px}
-.loading-bar{position:fixed;top:0;left:0;right:0;height:3px;background:#2563eb;z-index:9999;animation:load 2s ease infinite}
-@keyframes load{0%{width:0%}50%{width:70%}100%{width:100%}}
+.inp{width:100%;background:#111827;border:1px solid #374151;border-radius:8px;color:#f9fafb;font-size:13px;padding:10px;outline:none;font-family:monospace;margin-top:4px}
+.lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-top:12px;display:block}
+.navbtn{padding:5px 9px;border-radius:6px;border:none;font-size:11px;font-weight:700}
 </style>
 </head>
 <body>
 
 <div class="hdr">
   <div style="display:flex;align-items:center;gap:8px;">
-    <div class="logo-box">OW</div>
+    <div style="width:30px;height:30px;background:#2563eb;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:white;flex-shrink:0;">OW</div>
     <div>
       <div style="font-size:13px;font-weight:700;">OPTIMUM WATER</div>
-      <div style="font-size:8px;color:#9ca3af;letter-spacing:.1em;">FIELD SALES - VAUGHAN/GTA</div>
+      <div style="font-size:8px;color:#9ca3af;letter-spacing:.1em;">FIELD SALES TRACKER</div>
     </div>
   </div>
   <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
-    <button id="gpsBtn" onclick="toggleGps()" style="padding:5px 9px;border-radius:6px;border:none;font-size:11px;background:#374151;color:#9ca3af;">GPS</button>
-    <button onclick="loadNearby()" style="padding:5px 9px;border-radius:6px;border:none;font-size:11px;background:#374151;color:#9ca3af;">Load Nearby</button>
-    <button onclick="showList()" style="padding:5px 9px;border-radius:6px;border:none;font-size:11px;background:#374151;color:#9ca3af;">List</button>
-    <button onclick="openAdd()" style="padding:5px 11px;border-radius:6px;border:none;font-size:11px;background:#2563eb;color:white;font-weight:700;">+ Add</button>
+    <button id="gpsBtn" onclick="toggleGps()" class="navbtn" style="background:#374151;color:#9ca3af;">GPS</button>
+    <button onclick="searchNearby()" class="navbtn" style="background:#374151;color:#9ca3af;">Nearby</button>
+    <button onclick="showList()" class="navbtn" style="background:#374151;color:#9ca3af;">List</button>
+    <button onclick="openAdd()" class="navbtn" style="background:#2563eb;color:white;">+ Add</button>
   </div>
 </div>
 
@@ -58,50 +54,61 @@ input,select,textarea{font-family:monospace}
 <script>
 var CFG={pending:{label:"Not Visited",color:"#6b7280",bg:"#374151",dot:"#9ca3af"},checked_in:{label:"Checked In",color:"#60a5fa",bg:"#1e3a5f",dot:"#3b82f6"},not_interested:{label:"Not Interested",color:"#f87171",bg:"#450a0a",dot:"#ef4444"},sale:{label:"SALE!",color:"#4ade80",bg:"#052e16",dot:"#16a34a"},callback:{label:"Call Back",color:"#fbbf24",bg:"#451a03",dot:"#f59e0b"},no_answer:{label:"No Answer",color:"#c084fc",bg:"#2e1065",dot:"#a855f7"}};
 var BTYPES=["Restaurant","Medical","Laundry","Spa/Wellness","Auto","Bakery","Retail","Office","Gym","Hotel","Other"];
+var TYPE_MAP={"restaurant":"Restaurant","food":"Restaurant","meal_takeaway":"Restaurant","cafe":"Restaurant","doctor":"Medical","dentist":"Medical","hospital":"Medical","physiotherapist":"Medical","pharmacy":"Medical","laundry":"Laundry","car_wash":"Auto","car_dealer":"Auto","car_repair":"Auto","bakery":"Bakery","beauty_salon":"Spa/Wellness","spa":"Spa/Wellness","gym":"Gym","lodging":"Hotel"};
 
-// Load saved leads
 var leads=[];
-try{var saved=localStorage.getItem("ow8");if(saved)leads=JSON.parse(saved);}catch(e){}
-
-function save(){try{localStorage.setItem("ow8",JSON.stringify(leads));}catch(e){}}
+try{var sv=localStorage.getItem("ow9");if(sv)leads=JSON.parse(sv);}catch(e){}
+function save(){try{localStorage.setItem("ow9",JSON.stringify(leads));}catch(e){}}
 function hav(a,b,c,d){var R=6371,x=(c-a)*Math.PI/180,y=(d-b)*Math.PI/180,p=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)*Math.sin(y/2);return R*2*Math.atan2(Math.sqrt(p),Math.sqrt(1-p));}
 function fmt(k){return k<1?Math.round(k*1000)+"m":k.toFixed(1)+"km";}
 
-// Init Leaflet map centered on Vaughan
-var map=L.map("map",{zoomControl:true}).setView([43.8361,-79.4983],13);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"OpenStreetMap",maxZoom:19}).addTo(map);
-
-// GPS
-var gpsMarker=null,gpsCircle=null,watchId=null,myPos=null,gpsOn=false;
-
-function makeIcon(color,size){
-  return L.divIcon({
-    html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4);"></div>',
-    iconSize:[size,size],iconAnchor:[size/2,size/2],className:""
-  });
-}
-
-function makeGpsIcon(){
-  return L.divIcon({
-    html:'<div style="width:16px;height:16px;border-radius:50%;background:#60a5fa;border:3px solid white;box-shadow:0 0 12px rgba(96,165,250,.8);"></div>',
-    iconSize:[16,16],iconAnchor:[8,8],className:""
-  });
-}
-
-// Markers map
+var gmap,gpsMarker,watchId,myPos=null,gpsOn=false;
 var markers={};
+var placesService,infoWindow;
 
-function getColor(status){
+function initMap(){
+  gmap=new google.maps.Map(document.getElementById("map"),{
+    center:{lat:43.8361,lng:-79.4983},
+    zoom:13,
+    styles:[
+      {elementType:"geometry",stylers:[{color:"#1d2c4d"}]},
+      {elementType:"labels.text.fill",stylers:[{color:"#8ec3b9"}]},
+      {elementType:"labels.text.stroke",stylers:[{color:"#1a3646"}]},
+      {featureType:"road",elementType:"geometry",stylers:[{color:"#304a7d"}]},
+      {featureType:"road",elementType:"labels.text.fill",stylers:[{color:"#98a5be"}]},
+      {featureType:"water",elementType:"geometry",stylers:[{color:"#0e1626"}]},
+      {featureType:"poi",elementType:"geometry",stylers:[{color:"#283d6a"}]},
+      {featureType:"transit",elementType:"geometry",stylers:[{color:"#2f3948"}]}
+    ],
+    mapTypeControl:false,streetViewControl:false,fullscreenControl:false
+  });
+  placesService=new google.maps.places.PlacesService(gmap);
+  infoWindow=new google.maps.InfoWindow();
+  refreshMarkers();
+}
+
+function getMarkerIcon(status){
   var colors={pending:"#9ca3af",checked_in:"#3b82f6",not_interested:"#ef4444",sale:"#16a34a",callback:"#f59e0b",no_answer:"#a855f7"};
-  return colors[status]||"#9ca3af";
+  var c=colors[status]||"#9ca3af";
+  var size=status=="sale"?20:14;
+  return {
+    path:google.maps.SymbolPath.CIRCLE,
+    fillColor:c,fillOpacity:1,
+    strokeColor:"white",strokeWeight:2,
+    scale:size/2
+  };
 }
 
 function addMarker(lead){
-  if(markers[lead.id]){map.removeLayer(markers[lead.id]);}
-  var m=L.marker([lead.lat,lead.lng],{icon:makeIcon(getColor(lead.status),lead.status=="sale"?18:14)});
-  m.on("click",function(){showLead(lead.id);});
-  m.bindTooltip(lead.name,{permanent:false,direction:"top"});
-  m.addTo(map);
+  if(markers[lead.id]){markers[lead.id].setMap(null);}
+  var m=new google.maps.Marker({
+    position:{lat:lead.lat,lng:lead.lng},
+    map:gmap,
+    icon:getMarkerIcon(lead.status),
+    title:lead.name,
+    zIndex:lead.status=="sale"?100:1
+  });
+  m.addListener("click",function(){showLead(lead.id);});
   markers[lead.id]=m;
 }
 
@@ -122,9 +129,8 @@ function updateStats(){
 function toggleGps(){
   if(gpsOn){
     if(watchId)navigator.geolocation.clearWatch(watchId);
-    if(gpsMarker)map.removeLayer(gpsMarker);
-    if(gpsCircle)map.removeLayer(gpsCircle);
-    gpsMarker=null;gpsCircle=null;myPos=null;gpsOn=false;
+    if(gpsMarker)gpsMarker.setMap(null);
+    gpsMarker=null;myPos=null;gpsOn=false;
     document.getElementById("gpsBtn").style.background="#374151";
     document.getElementById("gpsBtn").style.color="#9ca3af";
     document.getElementById("gpsBtn").textContent="GPS";
@@ -133,64 +139,67 @@ function toggleGps(){
     document.getElementById("gpsBtn").innerHTML='<span class="spinner"></span> Locating...';
     watchId=navigator.geolocation.watchPosition(function(pos){
       myPos={lat:pos.coords.latitude,lng:pos.coords.longitude};
-      gpsOn=true;
-      document.getElementById("gpsBtn").style.background="#2563eb";
-      document.getElementById("gpsBtn").style.color="white";
-      document.getElementById("gpsBtn").textContent="GPS ON";
+      if(!gpsOn){
+        gpsOn=true;
+        document.getElementById("gpsBtn").style.background="#2563eb";
+        document.getElementById("gpsBtn").style.color="white";
+        document.getElementById("gpsBtn").textContent="GPS ON";
+        gmap.setCenter(myPos);gmap.setZoom(15);
+      }
       if(!gpsMarker){
-        gpsMarker=L.marker([myPos.lat,myPos.lng],{icon:makeGpsIcon(),zIndexOffset:1000}).addTo(map);
-        gpsCircle=L.circle([myPos.lat,myPos.lng],{radius:pos.coords.accuracy,color:"#60a5fa",fillColor:"#60a5fa",fillOpacity:.1,weight:1}).addTo(map);
-        map.setView([myPos.lat,myPos.lng],15);
+        gpsMarker=new google.maps.Marker({
+          position:myPos,map:gmap,
+          icon:{path:google.maps.SymbolPath.CIRCLE,fillColor:"#60a5fa",fillOpacity:1,strokeColor:"white",strokeWeight:3,scale:8},
+          title:"You are here",zIndex:1000
+        });
       } else {
-        gpsMarker.setLatLng([myPos.lat,myPos.lng]);
-        gpsCircle.setLatLng([myPos.lat,myPos.lng]);
-        gpsCircle.setRadius(pos.coords.accuracy);
+        gpsMarker.setPosition(myPos);
       }
     },function(e){
       document.getElementById("gpsBtn").textContent="GPS";
-      alert(e.code==1?"Location permission denied. Allow location in your browser settings.":"GPS error - try again.");
+      alert(e.code==1?"Location permission denied.":"GPS error.");
     },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
   }
 }
 
-// Load nearby businesses from Overpass API
-function loadNearby(){
+function searchNearby(){
   var center=myPos||{lat:43.8361,lng:-79.4983};
-  var radius=30000; // 30km
-  var panel=document.getElementById("panel");
-  panel.innerHTML='<div class="loading-bar"></div><div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1f2937;border:1px solid #374151;border-radius:12px;padding:20px 24px;z-index:3000;text-align:center;color:#f9fafb;font-size:13px;">Loading businesses near you...<br><br><span style="font-size:10px;color:#9ca3af;">Searching 30km radius</span></div>';
-
-  var query='[out:json][timeout:25];(node["amenity"~"restaurant|cafe|clinic|laundry|car_wash|car_repair|bakery|spa"](around:'+radius+','+center.lat+','+center.lng+');node["shop"~"laundry|dry_cleaning|bakery|car_repair|optician|massage"](around:'+radius+','+center.lat+','+center.lng+');node["healthcare"](around:'+radius+','+center.lat+','+center.lng+'););out body;';
-
-  fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"data="+encodeURIComponent(query)})
-  .then(function(r){return r.json();})
-  .then(function(data){
-    var added=0;
-    data.elements.forEach(function(el){
-      if(!el.tags||!el.tags.name)return;
-      var exists=leads.find(function(l){return Math.abs(l.lat-el.lat)<0.0001&&Math.abs(l.lng-el.lon)<0.0001;});
-      if(exists)return;
-      var type="Other";
-      var am=el.tags.amenity||"",sh=el.tags.shop||"",hc=el.tags.healthcare||"";
-      if(am.match(/restaurant|cafe|fast_food/))type="Restaurant";
-      else if(am.match(/clinic|hospital/)||hc)type="Medical";
-      else if(sh.match(/laundry|dry_cleaning/)||am=="laundry")type="Laundry";
-      else if(sh.match(/bakery/)||am=="bakery")type="Bakery";
-      else if(sh.match(/car_repair/)||am=="car_wash")type="Auto";
-      else if(sh.match(/massage/)||am=="spa")type="Spa/Wellness";
-      var lead={id:Date.now()+Math.random(),name:el.tags.name,address:el.tags["addr:street"]?(el.tags["addr:housenumber"]||"")+" "+el.tags["addr:street"]:"(see map)",type:type,lat:el.lat,lng:el.lon,status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};
-      leads.push(lead);
-      added++;
+  var types=[["restaurant"],["health"],["laundry"],["car_wash"],["bakery"],["spa"],["gym"],["car_dealer"]];
+  var total=0;
+  var done=0;
+  document.getElementById("panel").innerHTML='<div class="overlay"></div><div class="sheet"><div style="text-align:center;padding:20px;"><div class="spinner" style="width:24px;height:24px;border-width:3px;display:inline-block;"></div><br><br><div style="font-size:14px;margin-top:10px;">Searching nearby businesses...</div><div style="font-size:10px;color:#9ca3af;margin-top:6px;">This may take a few seconds</div></div></div>';
+  
+  function search(typeArr){
+    var req={location:new google.maps.LatLng(center.lat,center.lng),radius:20000,type:typeArr};
+    placesService.nearbySearch(req,function(results,status){
+      done++;
+      if(status==google.maps.places.PlacesServiceStatus.OK&&results){
+        results.forEach(function(place){
+          var exists=leads.find(function(l){return l.id==place.place_id;});
+          if(exists)return;
+          var t="Other";
+          if(place.types){place.types.forEach(function(pt){if(TYPE_MAP[pt]&&t=="Other")t=TYPE_MAP[pt];});}
+          var lead={
+            id:place.place_id,
+            name:place.name,
+            address:place.vicinity||"",
+            type:t,
+            lat:place.geometry.location.lat(),
+            lng:place.geometry.location.lng(),
+            rating:place.rating,
+            status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null
+          };
+          leads.push(lead);total++;
+        });
+      }
+      if(done==types.length){
+        save();refreshMarkers();closePanel();
+        gmap.setCenter(center);gmap.setZoom(13);
+        alert("Found "+total+" businesses near you! Tap any marker on the map to check in.");
+      }
     });
-    save();
-    refreshMarkers();
-    panel.innerHTML="";
-    alert("Added "+added+" businesses near you! Tap any pin on the map to check in.");
-  })
-  .catch(function(err){
-    panel.innerHTML="";
-    alert("Could not load businesses. Check your internet connection and try again.");
-  });
+  }
+  types.forEach(search);
 }
 
 function showLead(id){
@@ -198,36 +207,62 @@ function showLead(id){
   if(!lead)return;
   var cfg=CFG[lead.status];
   var dist=myPos?hav(myPos.lat,myPos.lng,lead.lat,lead.lng):null;
-  var h='<div class="overlay" onclick="closePanel()"></div>';
-  h+='<div class="sheet">';
+  var h='<div class="overlay" onclick="closePanel()"></div><div class="sheet">';
   h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">';
   h+='<div style="flex:1;min-width:0;"><div style="font-size:17px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+lead.name+"</div>";
-  h+='<div style="font-size:10px;color:#9ca3af;margin-top:2px;">'+lead.address+" &middot; "+lead.type+"</div>";
+  h+='<div style="font-size:10px;color:#9ca3af;margin-top:2px;">'+lead.address+(lead.type?" &middot; "+lead.type:"")+"</div>";
+  if(lead.rating)h+='<div style="font-size:10px;color:#fbbf24;margin-top:2px;">&#9733; '+lead.rating+" Google rating</div>";
   if(dist!=null)h+='<div style="font-size:11px;color:#f59e0b;margin-top:3px;">'+fmt(dist)+" away</div>";
+  if(lead.checkInTime)h+='<div style="font-size:9px;color:#6b7280;margin-top:2px;">In: '+lead.checkInTime+(lead.checkOutTime?" &middot; Out: "+lead.checkOutTime:"")+"</div>";
   h+="</div>";
   h+='<div style="background:'+cfg.bg+';border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:4px;margin-left:10px;flex-shrink:0;">';
   h+='<span style="width:6px;height:6px;border-radius:50%;background:'+cfg.dot+';display:inline-block;"></span>';
   h+='<span style="font-size:9px;font-weight:700;color:'+cfg.color+';">'+cfg.label+"</span></div></div>";
-  if(lead.notes)h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:12px;font-style:italic;padding:8px;background:#111827;border-radius:6px;">'+lead.notes+"</div>";
-  h+='<div style="display:flex;gap:8px;">';
-  if(lead.status=="pending")h+='<button onclick="openIn(\''+lead.id+'\')" style="flex:1;padding:12px;background:#2563eb;border:none;border-radius:8px;color:white;font-weight:800;font-size:13px;">CHECK IN</button>';
-  if(lead.status=="checked_in")h+='<button onclick="openOut(\''+lead.id+'\')" style="flex:1;padding:12px;background:#d97706;border:none;border-radius:8px;color:black;font-weight:800;font-size:13px;">CHECK OUT</button>';
-  if(["not_interested","no_answer","callback","sale"].indexOf(lead.status)>=0){
-    h+='<button onclick="reopenLead(\''+lead.id+'\')" style="flex:1;padding:12px;background:#374151;border:none;border-radius:8px;color:#9ca3af;font-size:12px;">Re-open</button>';
-  }
-  h+='<button onclick="deleteLead(\''+lead.id+'\')" style="padding:12px 14px;background:#450a0a;border:none;border-radius:8px;color:#f87171;font-size:13px;">Del</button>';
+  if(lead.notes)h+='<div style="font-size:11px;color:#9ca3af;margin-bottom:12px;font-style:italic;padding:8px;background:#111827;border-radius:6px;">'+lead.notes+"</div>";
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+  if(lead.status=="pending")h+='<button onclick="openIn(\''+id+'\')" style="flex:1;min-width:120px;padding:12px;background:#2563eb;border:none;border-radius:8px;color:white;font-weight:800;font-size:13px;">CHECK IN</button>';
+  if(lead.status=="checked_in")h+='<button onclick="openOut(\''+id+'\')" style="flex:1;min-width:120px;padding:12px;background:#d97706;border:none;border-radius:8px;color:black;font-weight:800;font-size:13px;">CHECK OUT</button>';
+  if(["not_interested","no_answer","callback","sale"].indexOf(lead.status)>=0)h+='<button onclick="reopenLead(\''+id+'\')" style="flex:1;min-width:100px;padding:12px;background:#374151;border:none;border-radius:8px;color:#9ca3af;font-size:12px;">Re-visit</button>';
+  h+='<button onclick="deleteLead(\''+id+'\')" style="padding:12px 14px;background:#450a0a;border:none;border-radius:8px;color:#f87171;font-size:13px;">Del</button>';
   h+='<button onclick="closePanel()" style="padding:12px 14px;background:#374151;border:none;border-radius:8px;color:#9ca3af;font-size:16px;">X</button>';
   h+="</div></div>";
   document.getElementById("panel").innerHTML=h;
+  if(gmap)gmap.panTo({lat:lead.lat,lng:lead.lng});
 }
 
 function showList(){
   var sorted=leads.slice();
   if(myPos){sorted=sorted.map(function(l){return Object.assign({},l,{dist:hav(myPos.lat,myPos.lng,l.lat,l.lng)});});sorted.sort(function(a,b){return a.dist-b.dist;});}
-  var h='<div class="overlay" onclick="closePanel()"></div>';
-  h+='<div class="sheet">';
-  h+='<div style="font-size:15px;font-weight:700;margin-bottom:12px;">All Leads ('+leads.length+")</div>";
-  if(!sorted.length)h+='<div style="text-align:center;padding:30px;color:#374151;">No leads yet. Tap Load Nearby to get businesses.</div>';
+  var h='<div class="overlay" onclick="closePanel()"></div><div class="sheet">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+  h+='<div style="font-size:15px;font-weight:700;">Leads ('+leads.length+")</div>";
+  h+='<div style="display:flex;gap:6px;">';
+  ["all","pending","checked_in","sale","callback"].forEach(function(f){
+    var labels={all:"All",pending:"New",checked_in:"Active",sale:"Sales",callback:"Follow-up"};
+    h+='<button onclick="filterList(\''+f+'\')" style="padding:3px 8px;border-radius:20px;border:none;font-size:9px;font-weight:700;background:#374151;color:#9ca3af;">'+labels[f]+"</button>";
+  });
+  h+="</div></div>";
+  if(!sorted.length)h+='<div style="text-align:center;padding:30px;color:#374151;font-size:12px;">No leads yet.<br>Tap Nearby to load businesses.</div>';
+  sorted.forEach(function(lead){
+    var cfg=CFG[lead.status];
+    h+='<div onclick="closePanel();showLead(\''+lead.id+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #374151;cursor:pointer;">';
+    h+='<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+lead.name+"</div>";
+    h+='<div style="font-size:9px;color:#9ca3af;">'+lead.address+"</div>";
+    if(lead.dist!=null)h+='<div style="font-size:9px;color:#f59e0b;">'+fmt(lead.dist)+" away</div>";
+    h+="</div>";
+    h+='<div style="background:'+cfg.bg+';border-radius:20px;padding:2px 7px;margin-left:8px;flex-shrink:0;"><span style="font-size:8px;font-weight:700;color:'+cfg.color+';">'+cfg.label+"</span></div>";
+    h+="</div>";
+  });
+  h+="</div>";
+  document.getElementById("panel").innerHTML=h;
+}
+
+function filterList(f){
+  var sorted=leads.slice();
+  if(f!="all")sorted=sorted.filter(function(l){return l.status==f;});
+  if(myPos){sorted=sorted.map(function(l){return Object.assign({},l,{dist:hav(myPos.lat,myPos.lng,l.lat,l.lng)});});sorted.sort(function(a,b){return a.dist-b.dist;});}
+  var h='<div class="overlay" onclick="closePanel()"></div><div class="sheet">';
+  h+='<div style="font-size:15px;font-weight:700;margin-bottom:12px;">'+f.charAt(0).toUpperCase()+f.slice(1).replace("_"," ")+" ("+sorted.length+")</div>";
   sorted.forEach(function(lead){
     var cfg=CFG[lead.status];
     h+='<div onclick="closePanel();showLead(\''+lead.id+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #374151;cursor:pointer;">';
@@ -248,9 +283,9 @@ function openIn(id){
   var h='<div class="overlay"></div><div class="sheet">';
   h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;">CHECKING IN AT</div>';
   h+='<div style="font-size:18px;font-weight:700;margin:4px 0 2px;">'+lead.name+"</div>";
-  h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:12px;">'+lead.address+"</div>";
-  h+='<div class="lbl">NOTES</div>';
-  h+='<textarea id="mn" class="inp" placeholder="Owner present, showed interest..." style="resize:none;height:70px;"></textarea>';
+  h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">'+lead.address+"</div>";
+  h+='<span class="lbl">NOTES</span>';
+  h+='<textarea id="mn" class="inp" placeholder="Owner present, showed interest in taste test..." style="resize:none;height:80px;margin-top:4px;"></textarea>';
   h+='<div style="display:flex;gap:8px;margin-top:14px;">';
   h+='<button onclick="confirmIn(\''+id+'\')" style="flex:1;padding:13px;background:#2563eb;border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK IN</button>';
   h+='<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
@@ -261,53 +296,61 @@ function openIn(id){
 function confirmIn(id){
   var n=document.getElementById("mn")?document.getElementById("mn").value:"";
   leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:"checked_in",checkInTime:new Date().toLocaleTimeString(),checkedInAt:Date.now(),notes:n}):l;});
-  save();addMarker(leads.find(function(l){return l.id==id;}));updateStats();closePanel();
+  save();
+  var lead=leads.find(function(l){return l.id==id;});
+  if(lead)addMarker(lead);
+  updateStats();closePanel();
 }
 
 function openOut(id){
   var lead=leads.find(function(l){return l.id==id;});
   if(!lead)return;
-  var coStatus="not_interested";
-  function renderOut(){
+  window._coStatus="not_interested";
+  function render(){
     var h='<div class="overlay"></div><div class="sheet">';
     h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;">CHECKING OUT OF</div>';
     h+='<div style="font-size:18px;font-weight:700;margin:4px 0 2px;">'+lead.name+"</div>";
     h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:12px;">'+lead.address+"</div>";
-    h+='<div class="lbl">OUTCOME</div>';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;">';
+    h+='<span class="lbl">OUTCOME</span>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px;">';
     ["sale","not_interested","callback","no_answer"].forEach(function(s){
-      var c=CFG[s],sel=coStatus==s;
+      var c=CFG[s],sel=window._coStatus==s;
       h+='<button onclick="window._coStatus=\''+s+'\';window._renderOut()" style="padding:11px 7px;border-radius:8px;font-size:11px;font-weight:700;border:2px solid '+(sel?c.dot:"#374151")+';background:'+(sel?c.bg:"#111827")+';color:'+(sel?c.color:"#6b7280")+';">'+c.label+"</button>";
     });
     h+="</div>";
-    h+='<div class="lbl">NOTES</div>';
-    h+='<textarea id="mn" class="inp" placeholder="Left brochure, follow up next week..." style="resize:none;height:60px;">'+lead.notes+"</textarea>";
-    var cbg=coStatus=="sale"?"#16a34a":coStatus=="callback"?"#d97706":"#dc2626";
+    h+='<span class="lbl">NOTES</span>';
+    h+='<textarea id="mn" class="inp" placeholder="Left brochure, will follow up..." style="resize:none;height:70px;margin-top:4px;">'+lead.notes+"</textarea>";
+    var cbg=window._coStatus=="sale"?"#16a34a":window._coStatus=="callback"?"#d97706":"#dc2626";
     h+='<div style="display:flex;gap:8px;margin-top:14px;">';
-    h+='<button onclick="confirmOut(\''+id+'\',window._coStatus||\''+coStatus+'\')" style="flex:1;padding:13px;background:'+cbg+';border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK OUT</button>';
+    h+='<button onclick="confirmOut(\''+id+'\',window._coStatus)" style="flex:1;padding:13px;background:'+cbg+';border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK OUT</button>';
     h+='<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
     h+="</div></div>";
     document.getElementById("panel").innerHTML=h;
-    window._coStatus=coStatus;
-    window._renderOut=renderOut;
+    window._renderOut=render;
   }
-  renderOut();
+  render();
 }
 
 function confirmOut(id,status){
   var n=document.getElementById("mn")?document.getElementById("mn").value:"";
   leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:status,checkOutTime:new Date().toLocaleTimeString(),notes:n}):l;});
-  save();addMarker(leads.find(function(l){return l.id==id;}));updateStats();closePanel();
+  save();
+  var lead=leads.find(function(l){return l.id==id;});
+  if(lead)addMarker(lead);
+  updateStats();closePanel();
 }
 
 function reopenLead(id){
   leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null}):l;});
-  save();addMarker(leads.find(function(l){return l.id==id;}));updateStats();closePanel();
+  save();
+  var lead=leads.find(function(l){return l.id==id;});
+  if(lead)addMarker(lead);
+  updateStats();closePanel();
 }
 
 function deleteLead(id){
-  if(confirm("Remove this business from your list?")){
-    if(markers[id]){map.removeLayer(markers[id]);delete markers[id];}
+  if(confirm("Remove this business?")){
+    if(markers[id]){markers[id].setMap(null);delete markers[id];}
     leads=leads.filter(function(l){return l.id!=id;});
     save();updateStats();closePanel();
   }
@@ -315,10 +358,11 @@ function deleteLead(id){
 
 function openAdd(){
   var h='<div class="overlay" onclick="closePanel()"></div><div class="sheet">';
-  h+='<div style="font-size:15px;font-weight:700;margin-bottom:14px;">Add Business</div>';
-  h+='<div class="lbl">BUSINESS NAME</div><input id="nn" class="inp" placeholder="e.g. Fresh Cut Barbershop"/>';
-  h+='<div class="lbl">ADDRESS</div><input id="na" class="inp" placeholder="e.g. 450 Queen St W"/>';
-  h+='<div class="lbl">TYPE</div><select id="nt" class="inp">';
+  h+='<div style="font-size:15px;font-weight:700;margin-bottom:4px;">Add Business</div>';
+  h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:14px;">Manually add a walk-in lead</div>';
+  h+='<span class="lbl">BUSINESS NAME</span><input id="nn" class="inp" placeholder="e.g. Fresh Cut Barbershop"/>';
+  h+='<span class="lbl">ADDRESS</span><input id="na" class="inp" placeholder="e.g. 450 Jane St, Vaughan"/>';
+  h+='<span class="lbl">TYPE</span><select id="nt" class="inp" style="margin-top:4px;">';
   BTYPES.forEach(function(t){h+="<option>"+t+"</option>";});
   h+="</select>";
   h+='<div style="display:flex;gap:8px;margin-top:16px;">';
@@ -332,12 +376,23 @@ function confirmAdd(){
   var n=document.getElementById("nn").value.trim();
   var a=document.getElementById("na").value.trim();
   var t=document.getElementById("nt").value;
-  if(!n||!a){alert("Please fill in name and address.");return;}
-  var lat=myPos?myPos.lat+(Math.random()-.5)*.003:43.8361+(Math.random()-.5)*.02;
-  var lng=myPos?myPos.lng+(Math.random()-.5)*.003:-79.4983+(Math.random()-.5)*.03;
-  var lead={id:Date.now(),name:n,address:a,type:t,lat:lat,lng:lng,status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};
-  leads.push(lead);save();addMarker(lead);updateStats();
-  map.setView([lat,lng],16);closePanel();
+  if(!n){alert("Please enter a business name.");return;}
+  var geocoder=new google.maps.Geocoder();
+  var addr=a?a+", Ontario, Canada":"Vaughan, Ontario, Canada";
+  geocoder.geocode({address:addr},function(results,status){
+    var lat,lng;
+    if(status=="OK"&&results[0]){
+      lat=results[0].geometry.location.lat();
+      lng=results[0].geometry.location.lng();
+    } else {
+      lat=myPos?myPos.lat+(Math.random()-.5)*.003:43.8361+(Math.random()-.5)*.02;
+      lng=myPos?myPos.lng+(Math.random()-.5)*.003:-79.4983+(Math.random()-.5)*.03;
+    }
+    var lead={id:"manual_"+Date.now(),name:n,address:a,type:t,lat:lat,lng:lng,status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};
+    leads.push(lead);save();addMarker(lead);updateStats();
+    gmap.setCenter({lat:lat,lng:lng});gmap.setZoom(16);
+    closePanel();
+  });
 }
 
 function doReset(){
@@ -348,9 +403,8 @@ function doReset(){
 }
 
 function closePanel(){document.getElementById("panel").innerHTML="";}
-
-// Init
-refreshMarkers();
 </script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuDjbaMMwS8ivkxO5QZEXmeSOCQVGM9VY&libraries=places&callback=initMap" async defer></script>
 </body>
 </html>
