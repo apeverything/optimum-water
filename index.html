@@ -349,7 +349,7 @@ document.getElementById(‘root’).innerHTML=html;
 window.toggleGps=function(){state.gpsOn?stopGps():startGps();};
 window.setView=function(v){state.view=v;draw();};
 window.setFilter=function(f){state.filter=f;draw();};
-window.doReset=function(){if(confirm(‘Reset all leads?’)){state.leads=state.leads.map(function(l){return Object.assign({},l,{status:‘pending’,checkInTime:null,checkOutTime:null,notes:’’,checkedInAt:null});});save();draw();}};
+window.doReset=function(){if(confirm(‘Reset all leads?’)){state.leads=state.leads.map(function(l){return Object.assign({},l,{status:'pending',checkInTime:null,checkOutTime:null,notes:’’,checkedInAt:null});});save();draw();}};
 window.openIn=function(id){state.modal={lead:state.leads.find(function(l){return l.id==id;}),mode:‘in’};state.modalNotes=’’;draw();};
 window.openOut=function(id){var lead=state.leads.find(function(l){return l.id==id;});state.modal={lead:lead,mode:‘out’};state.coStatus=‘not_interested’;state.modalNotes=lead.notes||’’;draw();};
 window.closeModal=function(){state.modal=null;draw();};
