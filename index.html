@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>OW Sales</title>
+</head>
+<body style="background:#0f172a;color:white;font-family:monospace;padding:20px">
+<h1>It works!</h1>
+<p id="gps">Tap to test GPS</p>
+<button onclick="testGps()" style="padding:15px;background:#0ea5e9;color:white;border:none;border-radius:8px;font-size:16px;">Test GPS</button>
+<script>
+function testGps(){
+  navigator.geolocation.getCurrentPosition(function(p){
+    document.getElementById('gps').innerText='GPS works! '+p.coords.latitude.toFixed(4)+', '+p.coords.longitude.toFixed(4);
+  },function(e){
+    document.getElementById('gps').innerText='GPS error: '+e.message;
+  });
+}
+</script>
+</body>
+</html>
