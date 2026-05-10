@@ -4,337 +4,353 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>OW Field Sales</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:monospace;background:#111827;color:#f9fafb;min-height:100vh;display:flex;flex-direction:column}
-button,input,select,textarea{font-family:monospace;cursor:pointer}
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-@keyframes gpsPulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.8}50%{transform:translate(-50%,-50%) scale(1.6);opacity:.3}}
+body{font-family:monospace;background:#111827;color:#f9fafb;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+button{font-family:monospace;cursor:pointer}
+input,select,textarea{font-family:monospace}
+#map{flex:1;z-index:1}
+.hdr{background:#1f2937;border-bottom:2px solid #374151;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;z-index:1000;position:relative}
+.logo-box{width:30px;height:30px;background:#2563eb;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:white;flex-shrink:0}
+.statbar{background:#1a2332;border-bottom:1px solid #374151;padding:6px 14px;display:flex;gap:14px;align-items:center;overflow-x:auto;z-index:1000;position:relative;flex-shrink:0}
+.sheet{position:fixed;bottom:0;left:0;right:0;background:#1f2937;border-top:2px solid #2563eb;border-radius:16px 16px 0 0;padding:18px 16px 30px;z-index:2000;animation:up .22s ease;max-height:85vh;overflow-y:auto}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.5)}50%{box-shadow:0 0 0 8px rgba(245,158,11,0)}}
 .spinner{width:9px;height:9px;border:2px solid #60a5fa;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:middle}
-.gps-ring{animation:gpsPulse 2s ease-in-out infinite}
-.nr-banner{animation:glow 2.5s ease-in-out infinite}
-.sheet{animation:slideUp .22s ease}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1999}
+.inp{width:100%;background:#111827;border:1px solid #374151;border-radius:8px;color:#f9fafb;font-size:13px;padding:10px;outline:none;font-family:monospace}
+.lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-top:12px;margin-bottom:4px}
+.loading-bar{position:fixed;top:0;left:0;right:0;height:3px;background:#2563eb;z-index:9999;animation:load 2s ease infinite}
+@keyframes load{0%{width:0%}50%{width:70%}100%{width:100%}}
 </style>
 </head>
 <body>
-<div id="app">Loading...</div>
+
+<div class="hdr">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div class="logo-box">OW</div>
+    <div>
+      <div style="font-size:13px;font-weight:700;">OPTIMUM WATER</div>
+      <div style="font-size:8px;color:#9ca3af;letter-spacing:.1em;">FIELD SALES - VAUGHAN/GTA</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+    <button id="gpsBtn" onclick="toggleGps()" style="padding:5px 9px;border-radius:6px;border:none;font-size:11px;background:#374151;color:#9ca3af;">GPS</button>
+    <button onclick="loadNearby()" style="padding:5px 9px;border-radius:6px;border:none;font-size:11px;background:#374151;color:#9ca3af;">Load Nearby</button>
+    <button onclick="showList()" style="padding:5px 9px;border-radius:6px;border:none;font-size:11px;background:#374151;color:#9ca3af;">List</button>
+    <button onclick="openAdd()" style="padding:5px 11px;border-radius:6px;border:none;font-size:11px;background:#2563eb;color:white;font-weight:700;">+ Add</button>
+  </div>
+</div>
+
+<div class="statbar">
+  <div style="display:flex;align-items:baseline;gap:4px;white-space:nowrap;"><span style="font-size:9px;color:#6b7280;text-transform:uppercase;">Leads</span><span id="st-total" style="font-size:17px;font-weight:900;color:#9ca3af;">0</span></div>
+  <div style="display:flex;align-items:baseline;gap:4px;white-space:nowrap;"><span style="font-size:9px;color:#6b7280;text-transform:uppercase;">Visited</span><span id="st-visited" style="font-size:17px;font-weight:900;color:#60a5fa;">0</span></div>
+  <div style="display:flex;align-items:baseline;gap:4px;white-space:nowrap;"><span style="font-size:9px;color:#6b7280;text-transform:uppercase;">Sales</span><span id="st-sales" style="font-size:17px;font-weight:900;color:#4ade80;">0</span></div>
+  <div style="display:flex;align-items:baseline;gap:4px;white-space:nowrap;"><span style="font-size:9px;color:#6b7280;text-transform:uppercase;">Conv</span><span id="st-conv" style="font-size:17px;font-weight:900;color:#fbbf24;">0%</span></div>
+  <button onclick="doReset()" style="margin-left:auto;padding:5px 9px;background:transparent;border:1px solid #374151;border-radius:6px;color:#6b7280;font-size:11px;flex-shrink:0;">Reset</button>
+</div>
+
+<div id="map"></div>
+<div id="panel"></div>
+
 <script>
 var CFG={pending:{label:"Not Visited",color:"#6b7280",bg:"#374151",dot:"#9ca3af"},checked_in:{label:"Checked In",color:"#60a5fa",bg:"#1e3a5f",dot:"#3b82f6"},not_interested:{label:"Not Interested",color:"#f87171",bg:"#450a0a",dot:"#ef4444"},sale:{label:"SALE!",color:"#4ade80",bg:"#052e16",dot:"#16a34a"},callback:{label:"Call Back",color:"#fbbf24",bg:"#451a03",dot:"#f59e0b"},no_answer:{label:"No Answer",color:"#c084fc",bg:"#2e1065",dot:"#a855f7"}};
 var BTYPES=["Restaurant","Medical","Laundry","Spa/Wellness","Auto","Bakery","Retail","Office","Gym","Hotel","Other"];
-var SAMPLE=[{id:1,name:"Tim Hortons",address:"1240 King St W",type:"Restaurant",lat:43.642,lng:-79.434},{id:2,name:"Metro Dental",address:"882 College St",type:"Medical",lat:43.655,lng:-79.421},{id:3,name:"Sunrise Laundromat",address:"334 Roncesvalles Ave",type:"Laundry",lat:43.648,lng:-79.449},{id:4,name:"Bella Cucina",address:"567 Bloor St W",type:"Restaurant",lat:43.661,lng:-79.441},{id:5,name:"GreenLeaf Spa",address:"221 Ossington Ave",type:"Spa/Wellness",lat:43.652,lng:-79.431},{id:6,name:"Parkdale Auto",address:"1100 Queen St W",type:"Auto",lat:43.638,lng:-79.436},{id:7,name:"Corner Bakery",address:"489 Dufferin St",type:"Bakery",lat:43.644,lng:-79.445},{id:8,name:"Dr. Patel Chiro",address:"75 Runnymede Rd",type:"Medical",lat:43.651,lng:-79.461}];
+
+// Load saved leads
+var leads=[];
+try{var saved=localStorage.getItem("ow8");if(saved)leads=JSON.parse(saved);}catch(e){}
+
+function save(){try{localStorage.setItem("ow8",JSON.stringify(leads));}catch(e){}}
 function hav(a,b,c,d){var R=6371,x=(c-a)*Math.PI/180,y=(d-b)*Math.PI/180,p=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)*Math.sin(y/2);return R*2*Math.atan2(Math.sqrt(p),Math.sqrt(1-p));}
 function fmt(k){return k<1?Math.round(k*1000)+"m":k.toFixed(1)+"km";}
-function fresh(l){return Object.assign({},l,{status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null});}
-var S={
-  leads:null,view:"map",gps:null,gpsStatus:"idle",watchId:null,
-  activeId:null,filter:"all",modal:null,notes:"",coStatus:"not_interested",
-  addOpen:false,newName:"",newAddr:"",newType:"Restaurant",newLat:null,newLng:null,
-  animFrame:null
-};
-function load(){try{var s=localStorage.getItem("ow7");if(s)S.leads=JSON.parse(s);}catch(e){}if(!S.leads)S.leads=SAMPLE.map(fresh);}
-function save(){try{localStorage.setItem("ow7",JSON.stringify(S.leads));}catch(e){}}
-function nearest(){
-  if(!S.gps)return null;
-  var p=S.leads.filter(function(l){return l.status=="pending";});
-  if(!p.length)return null;
-  var m=p.map(function(l){return{l:l,d:hav(S.gps.lat,S.gps.lng,l.lat,l.lng)};});
-  m.sort(function(a,b){return a.d-b.d;});
-  return{lead:m[0].l,dist:m[0].d};
-}
-function stats(){
-  var v=S.leads.filter(function(l){return l.status!="pending";}).length;
-  var s=S.leads.filter(function(l){return l.status=="sale";}).length;
-  return{total:S.leads.length,visited:v,sales:s,ni:S.leads.filter(function(l){return l.status=="not_interested";}).length,cb:S.leads.filter(function(l){return l.status=="callback";}).length,na:S.leads.filter(function(l){return l.status=="no_answer";}).length,conv:v>0?Math.round(s/v*100):0};
-}
-function startGps(){
-  if(!navigator.geolocation){S.gpsStatus="error";draw();return;}
-  S.gpsStatus="loading";draw();
-  S.watchId=navigator.geolocation.watchPosition(
-    function(p){S.gps={lat:p.coords.latitude,lng:p.coords.longitude};S.gpsStatus="ok";draw();},
-    function(e){S.gpsStatus="error";draw();},
-    {enableHighAccuracy:true,maximumAge:10000,timeout:15000}
-  );
-}
-function stopGps(){if(S.watchId!=null)navigator.geolocation.clearWatch(S.watchId);S.gps=null;S.gpsStatus="idle";draw();}
 
-function drawCanvas(){
-  var canvas=document.getElementById("mc");
-  if(!canvas)return;
-  if(S.animFrame)cancelAnimationFrame(S.animFrame);
-  var ctx=canvas.getContext("2d");
-  var t=0;
-  function frame(){
-    canvas.width=canvas.offsetWidth;
-    canvas.height=canvas.offsetHeight;
-    var w=canvas.width,h=canvas.height;
-    ctx.fillStyle="#0d1b2a";ctx.fillRect(0,0,w,h);
-    ctx.strokeStyle="#1e293b";ctx.lineWidth=1;
-    for(var x=0;x<w;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
-    for(var y=0;y<h;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
-    ctx.strokeStyle="#374151";ctx.lineWidth=2;
-    [w*.25,w*.5,w*.75].forEach(function(x){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();});
-    [h*.33,h*.66].forEach(function(y){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();});
-    ctx.strokeStyle="rgba(96,165,250,"+(0.2+0.1*Math.sin(t*.04))+")";
-    ctx.lineWidth=3;ctx.setLineDash([8,5]);ctx.lineDashOffset=-t*.4;
-    ctx.beginPath();ctx.moveTo(w*.1,h*.2);ctx.lineTo(w*.5,h*.2);ctx.lineTo(w*.5,h*.7);ctx.lineTo(w*.85,h*.7);ctx.stroke();
-    ctx.setLineDash([]);
-    t++;S.animFrame=requestAnimationFrame(frame);
-  }
-  frame();
-}
+// Init Leaflet map centered on Vaughan
+var map=L.map("map",{zoomControl:true}).setView([43.8361,-79.4983],13);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"OpenStreetMap",maxZoom:19}).addTo(map);
 
-function getPin(lead,minLat,maxLat,minLng,maxLng){
-  var x=((lead.lng-minLng)/(maxLng-minLng))*100;
-  var y=(1-(lead.lat-minLat)/(maxLat-minLat))*100;
-  return{x:Math.max(3,Math.min(97,x)),y:Math.max(3,Math.min(97,y))};
-}
+// GPS
+var gpsMarker=null,gpsCircle=null,watchId=null,myPos=null,gpsOn=false;
 
-function draw(){
-  var st=stats(),nr=nearest();
-  var allLats=S.leads.map(function(l){return l.lat;});
-  var allLngs=S.leads.map(function(l){return l.lng;});
-  var minLat=Math.min.apply(null,allLats)-0.006,maxLat=Math.max.apply(null,allLats)+0.006;
-  var minLng=Math.min.apply(null,allLngs)-0.012,maxLng=Math.max.apply(null,allLngs)+0.012;
-  var active=S.leads.find(function(l){return l.id==S.activeId;});
-  var h="";
-
-  // HEADER
-  h+='<div style="background:#1f2937;border-bottom:2px solid #374151;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">';
-  h+='<div style="display:flex;align-items:center;gap:8px;"><div style="width:32px;height:32px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:white;">OW</div>';
-  h+='<div><div style="font-size:13px;font-weight:700;">OPTIMUM WATER</div><div style="font-size:8px;color:#9ca3af;letter-spacing:.1em;">FIELD SALES</div></div></div>';
-  h+='<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">';
-  var gpsBg=S.gpsStatus=="ok"?"#2563eb":S.gpsStatus=="loading"?"#1e3a5f":"#374151";
-  var gpsCol=S.gpsStatus=="ok"?"white":"#9ca3af";
-  h+='<button onclick="toggleGps()" style="padding:5px 9px;border-radius:6px;border:none;font-size:11px;background:'+gpsBg+';color:'+gpsCol+';">';
-  h+=S.gpsStatus=="loading"?'<span class="spinner"></span> Locating...':S.gpsStatus=="ok"?"GPS ON":"GPS";
-  h+="</button>";
-  ["map","list","stats"].forEach(function(v){
-    h+='<button onclick="setView(\''+v+'\')" style="padding:5px 10px;border-radius:6px;border:none;font-size:11px;background:'+(S.view==v?"#2563eb":"#374151")+';color:'+(S.view==v?"white":"#9ca3af")+';">'+v+"</button>";
+function makeIcon(color,size){
+  return L.divIcon({
+    html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.4);"></div>',
+    iconSize:[size,size],iconAnchor:[size/2,size/2],className:""
   });
-  h+="</div></div>";
+}
 
-  // STATS BAR
-  h+='<div style="background:#1a2332;border-bottom:1px solid #374151;padding:7px 14px;display:flex;gap:14px;align-items:center;overflow-x:auto;">';
-  [{l:"Total",v:st.total,c:"#9ca3af"},{l:"Visited",v:st.visited,c:"#60a5fa"},{l:"Sales",v:st.sales,c:"#4ade80"},{l:"Conv",v:st.conv+"%",c:st.conv>=20?"#4ade80":"#fbbf24"}].forEach(function(s){
-    h+='<div style="display:flex;align-items:baseline;gap:4px;white-space:nowrap;"><span style="font-size:9px;color:#6b7280;text-transform:uppercase;">'+s.l+'</span><span style="font-size:17px;font-weight:900;color:'+s.c+';">'+s.v+"</span></div>";
+function makeGpsIcon(){
+  return L.divIcon({
+    html:'<div style="width:16px;height:16px;border-radius:50%;background:#60a5fa;border:3px solid white;box-shadow:0 0 12px rgba(96,165,250,.8);"></div>',
+    iconSize:[16,16],iconAnchor:[8,8],className:""
   });
-  h+='<div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0;">';
-  h+='<button onclick="openAdd()" style="padding:5px 11px;background:#2563eb;border:none;border-radius:6px;color:white;font-size:11px;font-weight:700;">+ Add</button>';
-  h+='<button onclick="doReset()" style="padding:5px 9px;background:transparent;border:1px solid #374151;border-radius:6px;color:#6b7280;font-size:11px;">Reset</button>';
+}
+
+// Markers map
+var markers={};
+
+function getColor(status){
+  var colors={pending:"#9ca3af",checked_in:"#3b82f6",not_interested:"#ef4444",sale:"#16a34a",callback:"#f59e0b",no_answer:"#a855f7"};
+  return colors[status]||"#9ca3af";
+}
+
+function addMarker(lead){
+  if(markers[lead.id]){map.removeLayer(markers[lead.id]);}
+  var m=L.marker([lead.lat,lead.lng],{icon:makeIcon(getColor(lead.status),lead.status=="sale"?18:14)});
+  m.on("click",function(){showLead(lead.id);});
+  m.bindTooltip(lead.name,{permanent:false,direction:"top"});
+  m.addTo(map);
+  markers[lead.id]=m;
+}
+
+function refreshMarkers(){
+  leads.forEach(addMarker);
+  updateStats();
+}
+
+function updateStats(){
+  var v=leads.filter(function(l){return l.status!="pending";}).length;
+  var s=leads.filter(function(l){return l.status=="sale";}).length;
+  document.getElementById("st-total").textContent=leads.length;
+  document.getElementById("st-visited").textContent=v;
+  document.getElementById("st-sales").textContent=s;
+  document.getElementById("st-conv").textContent=(v>0?Math.round(s/v*100):0)+"%";
+}
+
+function toggleGps(){
+  if(gpsOn){
+    if(watchId)navigator.geolocation.clearWatch(watchId);
+    if(gpsMarker)map.removeLayer(gpsMarker);
+    if(gpsCircle)map.removeLayer(gpsCircle);
+    gpsMarker=null;gpsCircle=null;myPos=null;gpsOn=false;
+    document.getElementById("gpsBtn").style.background="#374151";
+    document.getElementById("gpsBtn").style.color="#9ca3af";
+    document.getElementById("gpsBtn").textContent="GPS";
+  } else {
+    if(!navigator.geolocation){alert("GPS not available");return;}
+    document.getElementById("gpsBtn").innerHTML='<span class="spinner"></span> Locating...';
+    watchId=navigator.geolocation.watchPosition(function(pos){
+      myPos={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      gpsOn=true;
+      document.getElementById("gpsBtn").style.background="#2563eb";
+      document.getElementById("gpsBtn").style.color="white";
+      document.getElementById("gpsBtn").textContent="GPS ON";
+      if(!gpsMarker){
+        gpsMarker=L.marker([myPos.lat,myPos.lng],{icon:makeGpsIcon(),zIndexOffset:1000}).addTo(map);
+        gpsCircle=L.circle([myPos.lat,myPos.lng],{radius:pos.coords.accuracy,color:"#60a5fa",fillColor:"#60a5fa",fillOpacity:.1,weight:1}).addTo(map);
+        map.setView([myPos.lat,myPos.lng],15);
+      } else {
+        gpsMarker.setLatLng([myPos.lat,myPos.lng]);
+        gpsCircle.setLatLng([myPos.lat,myPos.lng]);
+        gpsCircle.setRadius(pos.coords.accuracy);
+      }
+    },function(e){
+      document.getElementById("gpsBtn").textContent="GPS";
+      alert(e.code==1?"Location permission denied. Allow location in your browser settings.":"GPS error - try again.");
+    },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+  }
+}
+
+// Load nearby businesses from Overpass API
+function loadNearby(){
+  var center=myPos||{lat:43.8361,lng:-79.4983};
+  var radius=30000; // 30km
+  var panel=document.getElementById("panel");
+  panel.innerHTML='<div class="loading-bar"></div><div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1f2937;border:1px solid #374151;border-radius:12px;padding:20px 24px;z-index:3000;text-align:center;color:#f9fafb;font-size:13px;">Loading businesses near you...<br><br><span style="font-size:10px;color:#9ca3af;">Searching 30km radius</span></div>';
+
+  var query='[out:json][timeout:25];(node["amenity"~"restaurant|cafe|clinic|laundry|car_wash|car_repair|bakery|spa"](around:'+radius+','+center.lat+','+center.lng+');node["shop"~"laundry|dry_cleaning|bakery|car_repair|optician|massage"](around:'+radius+','+center.lat+','+center.lng+');node["healthcare"](around:'+radius+','+center.lat+','+center.lng+'););out body;';
+
+  fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:"data="+encodeURIComponent(query)})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    var added=0;
+    data.elements.forEach(function(el){
+      if(!el.tags||!el.tags.name)return;
+      var exists=leads.find(function(l){return Math.abs(l.lat-el.lat)<0.0001&&Math.abs(l.lng-el.lon)<0.0001;});
+      if(exists)return;
+      var type="Other";
+      var am=el.tags.amenity||"",sh=el.tags.shop||"",hc=el.tags.healthcare||"";
+      if(am.match(/restaurant|cafe|fast_food/))type="Restaurant";
+      else if(am.match(/clinic|hospital/)||hc)type="Medical";
+      else if(sh.match(/laundry|dry_cleaning/)||am=="laundry")type="Laundry";
+      else if(sh.match(/bakery/)||am=="bakery")type="Bakery";
+      else if(sh.match(/car_repair/)||am=="car_wash")type="Auto";
+      else if(sh.match(/massage/)||am=="spa")type="Spa/Wellness";
+      var lead={id:Date.now()+Math.random(),name:el.tags.name,address:el.tags["addr:street"]?(el.tags["addr:housenumber"]||"")+" "+el.tags["addr:street"]:"(see map)",type:type,lat:el.lat,lng:el.lon,status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};
+      leads.push(lead);
+      added++;
+    });
+    save();
+    refreshMarkers();
+    panel.innerHTML="";
+    alert("Added "+added+" businesses near you! Tap any pin on the map to check in.");
+  })
+  .catch(function(err){
+    panel.innerHTML="";
+    alert("Could not load businesses. Check your internet connection and try again.");
+  });
+}
+
+function showLead(id){
+  var lead=leads.find(function(l){return l.id==id;});
+  if(!lead)return;
+  var cfg=CFG[lead.status];
+  var dist=myPos?hav(myPos.lat,myPos.lng,lead.lat,lead.lng):null;
+  var h='<div class="overlay" onclick="closePanel()"></div>';
+  h+='<div class="sheet">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">';
+  h+='<div style="flex:1;min-width:0;"><div style="font-size:17px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+lead.name+"</div>";
+  h+='<div style="font-size:10px;color:#9ca3af;margin-top:2px;">'+lead.address+" &middot; "+lead.type+"</div>";
+  if(dist!=null)h+='<div style="font-size:11px;color:#f59e0b;margin-top:3px;">'+fmt(dist)+" away</div>";
+  h+="</div>";
+  h+='<div style="background:'+cfg.bg+';border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:4px;margin-left:10px;flex-shrink:0;">';
+  h+='<span style="width:6px;height:6px;border-radius:50%;background:'+cfg.dot+';display:inline-block;"></span>';
+  h+='<span style="font-size:9px;font-weight:700;color:'+cfg.color+';">'+cfg.label+"</span></div></div>";
+  if(lead.notes)h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:12px;font-style:italic;padding:8px;background:#111827;border-radius:6px;">'+lead.notes+"</div>";
+  h+='<div style="display:flex;gap:8px;">';
+  if(lead.status=="pending")h+='<button onclick="openIn(\''+lead.id+'\')" style="flex:1;padding:12px;background:#2563eb;border:none;border-radius:8px;color:white;font-weight:800;font-size:13px;">CHECK IN</button>';
+  if(lead.status=="checked_in")h+='<button onclick="openOut(\''+lead.id+'\')" style="flex:1;padding:12px;background:#d97706;border:none;border-radius:8px;color:black;font-weight:800;font-size:13px;">CHECK OUT</button>';
+  if(["not_interested","no_answer","callback","sale"].indexOf(lead.status)>=0){
+    h+='<button onclick="reopenLead(\''+lead.id+'\')" style="flex:1;padding:12px;background:#374151;border:none;border-radius:8px;color:#9ca3af;font-size:12px;">Re-open</button>';
+  }
+  h+='<button onclick="deleteLead(\''+lead.id+'\')" style="padding:12px 14px;background:#450a0a;border:none;border-radius:8px;color:#f87171;font-size:13px;">Del</button>';
+  h+='<button onclick="closePanel()" style="padding:12px 14px;background:#374151;border:none;border-radius:8px;color:#9ca3af;font-size:16px;">X</button>';
   h+="</div></div>";
+  document.getElementById("panel").innerHTML=h;
+}
 
-  // MAP VIEW
-  if(S.view=="map"){
-    // Nearest banner
-    if(nr){
-      h+='<div class="nr-banner" onclick="setActive('+nr.lead.id+')" style="background:linear-gradient(90deg,#1c1500,#231d00);border-bottom:2px solid #f59e0b;padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">';
-      h+='<div style="display:flex;align-items:center;gap:10px;"><div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></div>';
-      h+='<div><div style="font-size:9px;color:#f59e0b;text-transform:uppercase;letter-spacing:.1em;">NEAREST UNVISITED</div>';
-      h+='<div style="font-size:15px;font-weight:700;color:#fef9c3;">'+nr.lead.name+"</div>";
-      h+='<div style="font-size:10px;color:#92400e;">'+nr.lead.address+"</div></div></div>";
-      h+='<div style="text-align:right;flex-shrink:0;"><div style="font-size:22px;font-weight:900;color:#f59e0b;">'+fmt(nr.dist)+'</div><div style="font-size:9px;color:#78350f;">away</div></div></div>';
-    }
-    // Map container
-    h+='<div style="flex:1;position:relative;min-height:400px;">';
-    h+='<canvas id="mc" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>';
-    // GPS dot
-    if(S.gps){
-      var gx=((S.gps.lng-minLng)/(maxLng-minLng))*100;
-      var gy=(1-(S.gps.lat-minLat)/(maxLat-minLat))*100;
-      h+='<div class="gps-ring" style="position:absolute;left:'+gx+'%;top:'+gy+'%;width:40px;height:40px;border-radius:50%;background:rgba(96,165,250,.15);border:1px solid rgba(96,165,250,.4);transform:translate(-50%,-50%);pointer-events:none;"></div>';
-      h+='<div style="position:absolute;left:'+gx+'%;top:'+gy+'%;width:12px;height:12px;border-radius:50%;background:#60a5fa;border:2px solid white;transform:translate(-50%,-50%);z-index:30;pointer-events:none;box-shadow:0 0 8px rgba(96,165,250,.8);"></div>';
-    }
-    // Lead pins
-    S.leads.forEach(function(lead){
-      var p=getPin(lead,minLat,maxLat,minLng,maxLng);
-      var cfg=CFG[lead.status];
-      var isA=lead.id==S.activeId,isN=nr&&nr.lead.id==lead.id;
-      var sz=isA?22:isN?19:14;
-      var border=isN?"3px solid #f59e0b":isA?"3px solid #60a5fa":"2px solid rgba(255,255,255,.2)";
-      var shadow=isA?"0 0 0 5px rgba(96,165,250,.3)":isN?"0 0 0 4px rgba(245,158,11,.3)":"none";
-      h+='<button onclick="setActive('+lead.id+')" style="position:absolute;left:'+p.x+'%;top:'+p.y+'%;transform:translate(-50%,-50%);width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+(isA?"white":cfg.dot)+';border:'+border+';padding:0;box-shadow:'+shadow+';z-index:'+(isA?22:isN?18:10)+';transition:all .15s;"></button>';
-    });
-    // Active drawer
-    if(active){
-      var acfg=CFG[active.status];
-      var adist=S.gps?hav(S.gps.lat,S.gps.lng,active.lat,active.lng):null;
-      h+='<div class="sheet" style="position:absolute;bottom:0;left:0;right:0;background:#1f2937;border-top:2px solid #374151;padding:14px 14px 20px;">';
-      h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">';
-      h+='<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+active.name+"</div>";
-      h+='<div style="font-size:10px;color:#9ca3af;margin-top:1px;">'+active.address+"</div>";
-      if(adist!=null)h+='<div style="font-size:10px;color:#f59e0b;margin-top:2px;">'+fmt(adist)+" away</div>";
-      h+="</div>";
-      h+='<div style="background:'+acfg.bg+';border-radius:20px;padding:3px 8px;display:flex;align-items:center;gap:4px;margin-left:8px;flex-shrink:0;">';
-      h+='<span style="width:6px;height:6px;border-radius:50%;background:'+acfg.dot+';display:inline-block;"></span>';
-      h+='<span style="font-size:9px;font-weight:700;color:'+acfg.color+';">'+acfg.label+"</span></div></div>";
-      if(active.notes)h+='<div style="font-size:10px;color:#6b7280;margin-bottom:8px;font-style:italic;">'+active.notes+"</div>";
-      h+='<div style="display:flex;gap:7px;">';
-      if(active.status=="pending")h+='<button onclick="openIn('+active.id+')" style="flex:1;padding:10px;background:#2563eb;border:none;border-radius:8px;color:white;font-weight:800;font-size:12px;">CHECK IN</button>';
-      if(active.status=="checked_in")h+='<button onclick="openOut('+active.id+')" style="flex:1;padding:10px;background:#d97706;border:none;border-radius:8px;color:black;font-weight:800;font-size:12px;">CHECK OUT</button>';
-      if(["not_interested","no_answer","callback","sale"].indexOf(active.status)>=0)h+='<div style="flex:1;text-align:center;font-size:11px;color:#6b7280;padding:10px;">Visit complete</div>';
-      h+='<button onclick="setActive(null)" style="padding:10px 13px;background:#374151;border:none;border-radius:8px;color:#9ca3af;font-size:13px;">X</button>';
-      h+="</div></div>";
-    }
-    // Legend
-    h+='<div style="position:absolute;top:10px;right:10px;background:rgba(17,24,39,.92);border-radius:8px;padding:8px 10px;">';
-    if(S.gpsStatus=="ok")h+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;"><span style="width:8px;height:8px;border-radius:50%;background:#60a5fa;display:inline-block;"></span><span style="font-size:8px;color:#93c5fd;">You</span></div>';
-    Object.keys(CFG).filter(function(k){return k!="checked_in";}).forEach(function(k){
-      h+='<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;"><span style="width:6px;height:6px;border-radius:50%;background:'+CFG[k].dot+';display:inline-block;flex-shrink:0;"></span><span style="font-size:8px;color:#6b7280;">'+CFG[k].label+"</span></div>";
-    });
+function showList(){
+  var sorted=leads.slice();
+  if(myPos){sorted=sorted.map(function(l){return Object.assign({},l,{dist:hav(myPos.lat,myPos.lng,l.lat,l.lng)});});sorted.sort(function(a,b){return a.dist-b.dist;});}
+  var h='<div class="overlay" onclick="closePanel()"></div>';
+  h+='<div class="sheet">';
+  h+='<div style="font-size:15px;font-weight:700;margin-bottom:12px;">All Leads ('+leads.length+")</div>";
+  if(!sorted.length)h+='<div style="text-align:center;padding:30px;color:#374151;">No leads yet. Tap Load Nearby to get businesses.</div>';
+  sorted.forEach(function(lead){
+    var cfg=CFG[lead.status];
+    h+='<div onclick="closePanel();showLead(\''+lead.id+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #374151;cursor:pointer;">';
+    h+='<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+lead.name+"</div>";
+    h+='<div style="font-size:9px;color:#9ca3af;">'+lead.address+"</div>";
+    if(lead.dist!=null)h+='<div style="font-size:9px;color:#f59e0b;">'+fmt(lead.dist)+" away</div>";
     h+="</div>";
-    if(S.gpsStatus=="idle")h+='<div onclick="toggleGps()" style="position:absolute;top:10px;left:10px;background:rgba(17,24,39,.88);border-radius:8px;padding:8px 10px;cursor:pointer;"><div style="font-size:9px;color:#6b7280;">Tap GPS</div><div style="font-size:8px;color:#374151;margin-top:1px;">to find nearest lead</div></div>';
+    h+='<div style="background:'+cfg.bg+';border-radius:20px;padding:2px 7px;margin-left:8px;flex-shrink:0;"><span style="font-size:8px;font-weight:700;color:'+cfg.color+';">'+cfg.label+"</span></div>";
     h+="</div>";
-  }
+  });
+  h+="</div>";
+  document.getElementById("panel").innerHTML=h;
+}
 
-  // LIST VIEW
-  if(S.view=="list"){
-    var shown=S.leads.slice();
-    if(S.filter!="all")shown=shown.filter(function(l){return l.status==S.filter;});
-    if(S.gps){shown=shown.map(function(l){return Object.assign({},l,{dist:hav(S.gps.lat,S.gps.lng,l.lat,l.lng)});});shown.sort(function(a,b){return a.dist-b.dist;});}
-    h+='<div style="flex:1;padding:13px;overflow-y:auto;">';
-    h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px;">';
-    [["all","All"],["pending","Not Visited"],["checked_in","Checked In"],["sale","Sale"],["not_interested","Not Interested"],["callback","Callback"],["no_answer","No Answer"]].forEach(function(f){
-      var on=S.filter==f[0];
-      h+='<button onclick="setFilter(\''+f[0]+'\')" style="padding:3px 10px;border-radius:20px;border:none;font-size:10px;font-weight:700;background:'+(on?"#2563eb":"#374151")+';color:'+(on?"white":"#9ca3af")+';">'+f[1]+"</button>";
-    });
-    h+="</div>";
-    shown.forEach(function(lead){
-      var cfg=CFG[lead.status],isN=nr&&nr.lead.id==lead.id;
-      h+='<div style="background:#1f2937;border-radius:10px;margin-bottom:7px;padding:10px 12px;border:1px solid '+(isN?"#f59e0b":lead.status=="sale"?"#16a34a":"#374151")+'">';
-      h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
-      h+='<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+lead.name+"</div>";
-      h+='<div style="font-size:10px;color:#9ca3af;margin-top:1px;">'+lead.address+" &middot; "+lead.type+"</div>";
-      if(lead.dist!=null)h+='<div style="font-size:10px;color:'+(isN?"#f59e0b":"#6b7280")+';margin-top:2px;">'+fmt(lead.dist)+" away</div>";
-      if(lead.notes)h+='<div style="font-size:9px;color:#6b7280;margin-top:3px;font-style:italic;">'+lead.notes+"</div>";
-      h+="</div>";
-      h+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-left:10px;">';
-      h+='<div style="background:'+cfg.bg+';border-radius:20px;padding:2px 7px;display:flex;align-items:center;gap:4px;"><span style="width:5px;height:5px;border-radius:50%;background:'+cfg.dot+';display:inline-block;"></span><span style="font-size:8px;font-weight:700;color:'+cfg.color+';white-space:nowrap;">'+cfg.label+"</span></div>";
-      if(lead.status=="pending")h+='<button onclick="openIn('+lead.id+')" style="padding:5px 9px;background:#2563eb;border:none;border-radius:6px;color:white;font-size:10px;font-weight:700;">Check In</button>';
-      if(lead.status=="checked_in")h+='<button onclick="openOut('+lead.id+')" style="padding:5px 9px;background:#d97706;border:none;border-radius:6px;color:black;font-size:10px;font-weight:700;">Check Out</button>';
-      h+="</div></div></div>";
-    });
-    if(!shown.length)h+='<div style="text-align:center;padding:40px;color:#374151;font-size:12px;">No leads here</div>';
-    h+="</div>";
-  }
+function openIn(id){
+  var lead=leads.find(function(l){return l.id==id;});
+  if(!lead)return;
+  var h='<div class="overlay"></div><div class="sheet">';
+  h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;">CHECKING IN AT</div>';
+  h+='<div style="font-size:18px;font-weight:700;margin:4px 0 2px;">'+lead.name+"</div>";
+  h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:12px;">'+lead.address+"</div>";
+  h+='<div class="lbl">NOTES</div>';
+  h+='<textarea id="mn" class="inp" placeholder="Owner present, showed interest..." style="resize:none;height:70px;"></textarea>';
+  h+='<div style="display:flex;gap:8px;margin-top:14px;">';
+  h+='<button onclick="confirmIn(\''+id+'\')" style="flex:1;padding:13px;background:#2563eb;border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK IN</button>';
+  h+='<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
+  h+="</div></div>";
+  document.getElementById("panel").innerHTML=h;
+}
 
-  // STATS VIEW
-  if(S.view=="stats"){
-    h+='<div style="flex:1;padding:16px;overflow-y:auto;">';
-    h+='<div style="background:linear-gradient(135deg,#052e16,#166534);border:1px solid #16a34a;border-radius:12px;padding:20px;margin-bottom:16px;text-align:center;">';
-    h+='<div style="font-size:64px;font-weight:900;color:#4ade80;line-height:1;">'+st.sales+"</div>";
-    h+='<div style="font-size:12px;color:#86efac;margin-top:4px;">SALES TODAY</div>';
-    h+='<div style="font-size:10px;color:#4ade80;margin-top:6px;opacity:.8;">'+st.conv+"% conversion</div></div>";
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">';
-    [{l:"Visited",v:st.visited,t:st.total,c:"#60a5fa"},{l:"Not Interested",v:st.ni,t:st.visited||1,c:"#f87171"},{l:"Callbacks",v:st.cb,t:st.visited||1,c:"#fbbf24"},{l:"No Answer",v:st.na,t:st.visited||1,c:"#c084fc"}].forEach(function(s){
-      h+='<div style="background:#1f2937;border-radius:10px;padding:12px;border:1px solid #374151;"><div style="font-size:28px;font-weight:900;color:'+s.c+';">'+s.v+"</div>";
-      h+='<div style="font-size:9px;color:#9ca3af;margin-top:2px;">'+s.l+"</div>";
-      h+='<div style="margin-top:7px;height:3px;background:#374151;border-radius:2px;"><div style="height:100%;width:'+Math.min(100,Math.round(s.v/(s.t||1)*100))+"%;background:"+s.c+';border-radius:2px;"></div></div></div>';
-    });
-    h+="</div>";
-    var slist=S.leads.filter(function(l){return l.status=="sale";});
-    if(slist.length){
-      h+='<div style="background:#1f2937;border-radius:10px;padding:13px;border:1px solid #16a34a;margin-bottom:10px;">';
-      h+='<div style="font-size:9px;color:#4ade80;text-transform:uppercase;margin-bottom:8px;">SALES</div>';
-      slist.forEach(function(l){h+='<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div><div style="font-size:12px;font-weight:700;">'+l.name+"</div><div style=\"font-size:9px;color:#6b7280;\">"+l.address+"</div></div>"+(l.checkOutTime?'<div style="font-size:9px;color:#4ade80;">'+l.checkOutTime+"</div>":"")+"</div>";});
-      h+="</div>";
-    }
-    var clist=S.leads.filter(function(l){return l.status=="callback";});
-    if(clist.length){
-      h+='<div style="background:#1f2937;border-radius:10px;padding:13px;border:1px solid #d97706;">';
-      h+='<div style="font-size:9px;color:#fbbf24;text-transform:uppercase;margin-bottom:8px;">CALLBACKS</div>';
-      clist.forEach(function(l){h+='<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div><div style="font-size:12px;font-weight:700;">'+l.name+"</div><div style=\"font-size:9px;color:#6b7280;\">"+l.address+"</div>"+(l.notes?'<div style="font-size:9px;color:#92400e;font-style:italic;">'+l.notes+"</div>":"")+"</div><div style=\"font-size:9px;color:#fbbf24;\">callback</div></div>";});
-      h+="</div>";
-    }
-    h+="</div>";
-  }
+function confirmIn(id){
+  var n=document.getElementById("mn")?document.getElementById("mn").value:"";
+  leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:"checked_in",checkInTime:new Date().toLocaleTimeString(),checkedInAt:Date.now(),notes:n}):l;});
+  save();addMarker(leads.find(function(l){return l.id==id;}));updateStats();closePanel();
+}
 
-  // CHECK IN MODAL
-  if(S.modal&&S.modal.mode=="in"){
-    var ml=S.modal.lead;
-    h+='<div style="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;z-index:100;">';
-    h+='<div class="sheet" style="background:#1f2937;border-top:2px solid #2563eb;border-radius:16px 16px 0 0;padding:20px 16px 32px;width:100%;">';
-    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;">CHECKING IN AT</div>';
-    h+='<div style="font-size:18px;font-weight:700;margin-top:4px;">'+ml.name+"</div>";
-    h+='<div style="font-size:10px;color:#6b7280;margin-top:2px;">'+ml.address+"</div>";
-    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin:12px 0 6px;">NOTES</div>';
-    h+='<textarea id="mn" oninput="S.notes=this.value" placeholder="Owner present, showed interest..." style="width:100%;background:#111827;border:1px solid #374151;border-radius:8px;color:#f9fafb;font-size:13px;padding:10px;resize:none;height:70px;outline:none;font-family:monospace;">'+S.notes+"</textarea>";
-    h+='<div style="display:flex;gap:8px;margin-top:16px;">';
-    h+='<button onclick="confirmIn()" style="flex:1;padding:13px;background:#2563eb;border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK IN</button>';
-    h+='<button onclick="closeModal()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
-    h+="</div></div></div>";
-  }
-
-  // CHECK OUT MODAL
-  if(S.modal&&S.modal.mode=="out"){
-    var ml2=S.modal.lead;
-    h+='<div style="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;z-index:100;">';
-    h+='<div class="sheet" style="background:#1f2937;border-top:2px solid #2563eb;border-radius:16px 16px 0 0;padding:20px 16px 32px;width:100%;">';
+function openOut(id){
+  var lead=leads.find(function(l){return l.id==id;});
+  if(!lead)return;
+  var coStatus="not_interested";
+  function renderOut(){
+    var h='<div class="overlay"></div><div class="sheet">';
     h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;">CHECKING OUT OF</div>';
-    h+='<div style="font-size:18px;font-weight:700;margin-top:4px;">'+ml2.name+"</div>";
-    h+='<div style="font-size:10px;color:#6b7280;margin-top:2px;">'+ml2.address+"</div>";
-    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin:12px 0 8px;">OUTCOME</div>';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">';
+    h+='<div style="font-size:18px;font-weight:700;margin:4px 0 2px;">'+lead.name+"</div>";
+    h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:12px;">'+lead.address+"</div>";
+    h+='<div class="lbl">OUTCOME</div>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;">';
     ["sale","not_interested","callback","no_answer"].forEach(function(s){
-      var c=CFG[s],sel=S.coStatus==s;
-      h+='<button onclick="setCO(\''+s+'\')" style="padding:11px 7px;border-radius:8px;font-size:11px;font-weight:700;border:2px solid '+(sel?c.dot:"#374151")+';background:'+(sel?c.bg:"#111827")+';color:'+(sel?c.color:"#6b7280")+';">'+c.label+"</button>";
+      var c=CFG[s],sel=coStatus==s;
+      h+='<button onclick="window._coStatus=\''+s+'\';window._renderOut()" style="padding:11px 7px;border-radius:8px;font-size:11px;font-weight:700;border:2px solid '+(sel?c.dot:"#374151")+';background:'+(sel?c.bg:"#111827")+';color:'+(sel?c.color:"#6b7280")+';">'+c.label+"</button>";
     });
     h+="</div>";
-    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin:12px 0 6px;">NOTES</div>';
-    h+='<textarea id="mn" oninput="S.notes=this.value" placeholder="Left brochure, follow up next week..." style="width:100%;background:#111827;border:1px solid #374151;border-radius:8px;color:#f9fafb;font-size:13px;padding:10px;resize:none;height:70px;outline:none;font-family:monospace;">'+S.notes+"</textarea>";
-    var cbg=S.coStatus=="sale"?"#16a34a":S.coStatus=="callback"?"#d97706":"#dc2626";
-    h+='<div style="display:flex;gap:8px;margin-top:16px;">';
-    h+='<button onclick="confirmOut()" style="flex:1;padding:13px;background:'+cbg+';border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK OUT</button>';
-    h+='<button onclick="closeModal()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
-    h+="</div></div></div>";
+    h+='<div class="lbl">NOTES</div>';
+    h+='<textarea id="mn" class="inp" placeholder="Left brochure, follow up next week..." style="resize:none;height:60px;">'+lead.notes+"</textarea>";
+    var cbg=coStatus=="sale"?"#16a34a":coStatus=="callback"?"#d97706":"#dc2626";
+    h+='<div style="display:flex;gap:8px;margin-top:14px;">';
+    h+='<button onclick="confirmOut(\''+id+'\',window._coStatus||\''+coStatus+'\')" style="flex:1;padding:13px;background:'+cbg+';border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK OUT</button>';
+    h+='<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
+    h+="</div></div>";
+    document.getElementById("panel").innerHTML=h;
+    window._coStatus=coStatus;
+    window._renderOut=renderOut;
   }
-
-  // ADD MODAL
-  if(S.addOpen){
-    h+='<div style="position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;z-index:100;">';
-    h+='<div class="sheet" style="background:#1f2937;border-top:2px solid #16a34a;border-radius:16px 16px 0 0;padding:20px 16px 32px;width:100%;max-height:85vh;overflow-y:auto;">';
-    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;">ADD NEW BUSINESS</div>';
-    h+='<div style="font-size:17px;font-weight:700;margin-top:4px;">Walk-in Lead</div>';
-    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:12px;margin-bottom:4px;">BUSINESS NAME</div>';
-    h+='<input id="nn" value="'+S.newName+'" placeholder="e.g. Fresh Cut Barbershop" oninput="S.newName=this.value" style="width:100%;background:#111827;border:1px solid #374151;border-radius:8px;color:#f9fafb;font-size:13px;padding:10px;outline:none;font-family:monospace;"/>';
-    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:12px;margin-bottom:4px;">ADDRESS</div>';
-    h+='<input id="na" value="'+S.newAddr+'" placeholder="e.g. 450 Queen St W" oninput="S.newAddr=this.value" style="width:100%;background:#111827;border:1px solid #374151;border-radius:8px;color:#f9fafb;font-size:13px;padding:10px;outline:none;font-family:monospace;"/>';
-    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:12px;margin-bottom:4px;">TYPE</div>';
-    h+='<select onchange="S.newType=this.value" style="width:100%;background:#111827;border:1px solid #374151;border-radius:8px;color:#f9fafb;font-size:13px;padding:10px;outline:none;font-family:monospace;">';
-    BTYPES.forEach(function(t){h+="<option"+(S.newType==t?" selected":"")+">"+t+"</option>";});
-    h+="</select>";
-    if(S.gps){
-      h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:12px;margin-bottom:4px;">GPS LOCATION</div>';
-      h+='<button onclick="tagGps()" style="width:100%;padding:10px;background:'+(S.newLat?"#052e16":"#111827")+';border:2px solid '+(S.newLat?"#16a34a":"#374151")+';border-radius:8px;color:'+(S.newLat?"#4ade80":"#60a5fa")+';font-size:11px;">'+(S.newLat?"GPS Tagged: "+S.newLat.toFixed(4)+", "+S.newLng.toFixed(4):"Tag My Location")+"</button>";
-    }
-    var canAdd=S.newName.trim()&&S.newAddr.trim();
-    h+='<div style="display:flex;gap:8px;margin-top:16px;">';
-    h+='<button onclick="addBiz()" style="flex:1;padding:13px;border-radius:10px;border:none;font-weight:900;font-size:13px;background:'+(canAdd?"#16a34a":"#374151")+';color:'+(canAdd?"white":"#6b7280")+';">ADD TO ROUTE</button>';
-    h+='<button onclick="closeAdd()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
-    h+="</div></div></div>";
-  }
-
-  document.getElementById("app").innerHTML=h;
-  if(S.view=="map")drawCanvas();
+  renderOut();
 }
 
-window.toggleGps=function(){S.gpsStatus=="ok"?stopGps():startGps();};
-window.setView=function(v){S.view=v;if(S.animFrame){cancelAnimationFrame(S.animFrame);S.animFrame=null;}draw();};
-window.setActive=function(id){S.activeId=S.activeId==id?null:id;draw();};
-window.setFilter=function(f){S.filter=f;draw();};
-window.doReset=function(){if(confirm("Reset all leads for a fresh day?")){S.leads=S.leads.map(fresh);save();S.activeId=null;draw();}};
-window.openIn=function(id){S.modal={lead:S.leads.find(function(l){return l.id==id;}),mode:"in"};S.notes="";draw();};
-window.openOut=function(id){var l=S.leads.find(function(l){return l.id==id;});S.modal={lead:l,mode:"out"};S.coStatus="not_interested";S.notes=l.notes||"";draw();};
-window.closeModal=function(){S.modal=null;draw();};
-window.setCO=function(s){S.coStatus=s;draw();};
-window.confirmIn=function(){var n=document.getElementById("mn")?document.getElementById("mn").value:S.notes;S.leads=S.leads.map(function(l){return l.id==S.modal.lead.id?Object.assign({},l,{status:"checked_in",checkInTime:new Date().toLocaleTimeString(),checkedInAt:Date.now(),notes:n}):l;});save();S.modal=null;draw();};
-window.confirmOut=function(){var n=document.getElementById("mn")?document.getElementById("mn").value:S.notes;S.leads=S.leads.map(function(l){return l.id==S.modal.lead.id?Object.assign({},l,{status:S.coStatus,checkOutTime:new Date().toLocaleTimeString(),notes:n}):l;});save();S.modal=null;S.activeId=null;draw();};
-window.openAdd=function(){S.addOpen=true;S.newName="";S.newAddr="";S.newType="Restaurant";S.newLat=null;S.newLng=null;draw();};
-window.closeAdd=function(){S.addOpen=false;draw();};
-window.tagGps=function(){if(S.gps){S.newLat=S.gps.lat;S.newLng=S.gps.lng;draw();}};
-window.addBiz=function(){var n=document.getElementById("nn")?document.getElementById("nn").value.trim():S.newName.trim(),a=document.getElementById("na")?document.getElementById("na").value.trim():S.newAddr.trim();if(!n||!a)return;var nl={id:Date.now(),name:n,address:a,type:S.newType,lat:S.newLat||(S.gps?S.gps.lat+(Math.random()-.5)*.003:43.649+(Math.random()-.5)*.02),lng:S.newLng||(S.gps?S.gps.lng+(Math.random()-.5)*.003:-79.435+(Math.random()-.5)*.03),status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};S.leads.push(nl);save();S.addOpen=false;S.view="map";draw();};
-load();draw();
+function confirmOut(id,status){
+  var n=document.getElementById("mn")?document.getElementById("mn").value:"";
+  leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:status,checkOutTime:new Date().toLocaleTimeString(),notes:n}):l;});
+  save();addMarker(leads.find(function(l){return l.id==id;}));updateStats();closePanel();
+}
+
+function reopenLead(id){
+  leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null}):l;});
+  save();addMarker(leads.find(function(l){return l.id==id;}));updateStats();closePanel();
+}
+
+function deleteLead(id){
+  if(confirm("Remove this business from your list?")){
+    if(markers[id]){map.removeLayer(markers[id]);delete markers[id];}
+    leads=leads.filter(function(l){return l.id!=id;});
+    save();updateStats();closePanel();
+  }
+}
+
+function openAdd(){
+  var h='<div class="overlay" onclick="closePanel()"></div><div class="sheet">';
+  h+='<div style="font-size:15px;font-weight:700;margin-bottom:14px;">Add Business</div>';
+  h+='<div class="lbl">BUSINESS NAME</div><input id="nn" class="inp" placeholder="e.g. Fresh Cut Barbershop"/>';
+  h+='<div class="lbl">ADDRESS</div><input id="na" class="inp" placeholder="e.g. 450 Queen St W"/>';
+  h+='<div class="lbl">TYPE</div><select id="nt" class="inp">';
+  BTYPES.forEach(function(t){h+="<option>"+t+"</option>";});
+  h+="</select>";
+  h+='<div style="display:flex;gap:8px;margin-top:16px;">';
+  h+='<button onclick="confirmAdd()" style="flex:1;padding:13px;background:#16a34a;border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">ADD TO MAP</button>';
+  h+='<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
+  h+="</div></div>";
+  document.getElementById("panel").innerHTML=h;
+}
+
+function confirmAdd(){
+  var n=document.getElementById("nn").value.trim();
+  var a=document.getElementById("na").value.trim();
+  var t=document.getElementById("nt").value;
+  if(!n||!a){alert("Please fill in name and address.");return;}
+  var lat=myPos?myPos.lat+(Math.random()-.5)*.003:43.8361+(Math.random()-.5)*.02;
+  var lng=myPos?myPos.lng+(Math.random()-.5)*.003:-79.4983+(Math.random()-.5)*.03;
+  var lead={id:Date.now(),name:n,address:a,type:t,lat:lat,lng:lng,status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};
+  leads.push(lead);save();addMarker(lead);updateStats();
+  map.setView([lat,lng],16);closePanel();
+}
+
+function doReset(){
+  if(confirm("Reset all leads to Not Visited?")){
+    leads=leads.map(function(l){return Object.assign({},l,{status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null});});
+    save();refreshMarkers();closePanel();
+  }
+}
+
+function closePanel(){document.getElementById("panel").innerHTML="";}
+
+// Init
+refreshMarkers();
 </script>
 </body>
 </html>
