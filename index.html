@@ -374,7 +374,7 @@ if(!n||!a)return;
 var nl={id:Date.now(),name:n,address:a,type:state.newType,
 lat:state.newLat||(state.gps?state.gps.lat+(Math.random()-.5)*.003:43.649+(Math.random()-.5)*.02),
 lng:state.newLng||(state.gps?state.gps.lng+(Math.random()-.5)*.003:-79.435+(Math.random()-.5)*.03),
-status:‘pending’,checkInTime:null,checkOutTime:null,notes:’’,checkedInAt:null};
+status:'pending',checkInTime:null,checkOutTime:null,notes:’’,checkedInAt:null};
 state.leads.push(nl);save();state.addOpen=false;draw();
 };
 
