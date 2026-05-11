@@ -130,16 +130,7 @@ function initMap(){
     clickableIcons:true,
     disableDefaultUI:true,
     gestureHandling:"greedy",
-    styles:[
-      {elementType:"geometry",stylers:[{color:"#1d2c4d"}]},
-      {elementType:"labels.text.fill",stylers:[{color:"#8ec3b9"}]},
-      {elementType:"labels.text.stroke",stylers:[{color:"#1a3646"}]},
-      {featureType:"road",elementType:"geometry",stylers:[{color:"#304a7d"}]},
-      {featureType:"road",elementType:"labels.text.fill",stylers:[{color:"#98a5be"}]},
-      {featureType:"water",elementType:"geometry",stylers:[{color:"#0e1626"}]},
-      {featureType:"poi",elementType:"geometry",stylers:[{color:"#283d6a"}]},
-      {featureType:"transit",elementType:"geometry",stylers:[{color:"#2f3948"}]}
-    ]
+    styles:[]
   });
   placeSvc=new google.maps.places.PlacesService(gmap);
   dirSvc=new google.maps.DirectionsService();
@@ -335,10 +326,14 @@ function applyRoute(route){
   save();
   currentRoute=route;routeActive=true;
   document.getElementById("route-badge").style.display="block";
-  clearAllMarkers();
+  // Remove ALL markers first
+  Object.keys(markers).forEach(function(k){if(markers[k]&&markers[k].setMap)markers[k].setMap(null);});
+  markers={};
+  // Only show numbered route markers, hide everything else
   leads.forEach(function(l){
     var idx=currentRoute.findIndex(function(r){return r.id==l.id;});
     if(idx>=0)addMarker(l,idx);
+    // Non-route leads stay hidden
   });
   updateStats();
   closePanel();
@@ -375,6 +370,29 @@ function showRoutePanel(){
   document.getElementById("panel").innerHTML=h;
 }
 
+function drawFullRoute(pending){
+  if(!myPos||!pending||!pending.length)return;
+  var dest=pending[pending.length>1?pending.length-1:0];
+  var wps=pending.length>1?pending.slice(0,pending.length-1).slice(0,22).map(function(r){return{location:new google.maps.LatLng(r.lat,r.lng),stopover:true};}):[];
+  var req={
+    origin:new google.maps.LatLng(myPos.lat,myPos.lng),
+    destination:new google.maps.LatLng(dest.lat,dest.lng),
+    waypoints:wps,
+    optimizeWaypoints:false,
+    travelMode:google.maps.TravelMode.DRIVING
+  };
+  dirSvc.route(req,function(result,status){
+    if(status==google.maps.DirectionsStatus.OK){
+      try{dirRenderer.setMap(null);}catch(e){}
+      dirRenderer=new google.maps.DirectionsRenderer({suppressMarkers:true,suppressInfoWindows:true,polylineOptions:{strokeColor:"#1a73e8",strokeWeight:7,strokeOpacity:.95}});
+      dirRenderer.setMap(gmap);
+      dirRenderer.setDirections(result);
+    } else {
+      console.log("Directions failed:",status);
+    }
+  });
+}
+
 function startNavigation(){
   closePanel();
   var pending=currentRoute.filter(function(r){var l=leads.find(function(x){return x.id==r.id;});return l&&l.status=="pending";});
@@ -384,27 +402,8 @@ function startNavigation(){
   document.getElementById("trackBtn").style.background="#7c3aed";
   if(myPos){gmap.setCenter(myPos);gmap.setZoom(16);gmap.setTilt(67.5);gmap.setHeading(myHeading);}
   navStopId=first.id;
-  // Draw full route from current position through ALL pending stops
-  if(myPos&&pending.length>0){
-    var waypoints=pending.slice(1).slice(0,22).map(function(r){
-      return{location:new google.maps.LatLng(r.lat,r.lng),stopover:true};
-    });
-    dirSvc.route({
-      origin:new google.maps.LatLng(myPos.lat,myPos.lng),
-      destination:new google.maps.LatLng(pending[pending.length-1].lat,pending[pending.length-1].lng),
-      waypoints:waypoints,
-      optimizeWaypoints:false,
-      travelMode:google.maps.TravelMode.DRIVING
-    },function(result,status){
-      if(status==google.maps.DirectionsStatus.OK){
-        dirRenderer.setDirections(result);
-        // Fit map to show full route
-        if(!trackingMode){
-          gmap.fitBounds(result.routes[0].bounds);
-        }
-      }
-    });
-  }
+  // Draw full route through all pending stops
+  drawFullRoute(pending);
   showNavHUD(first);
 }
 
@@ -471,21 +470,17 @@ function exitNav(){
 
 function clearRoute(){
   exitNav();
-  // Force remove every single marker from the map
-  Object.keys(markers).forEach(function(k){
-    if(markers[k]&&markers[k].setMap)markers[k].setMap(null);
-  });
+  // Remove every marker
+  Object.keys(markers).forEach(function(k){if(markers[k]&&markers[k].setMap)markers[k].setMap(null);});
   markers={};
   currentRoute=[];routeActive=false;
   document.getElementById("route-badge").style.display="none";
   document.getElementById("nav-hud").style.display="none";
-  // Clear the blue route line
-  try{
-    dirRenderer.setMap(null);
-    dirRenderer=new google.maps.DirectionsRenderer({suppressMarkers:true,suppressInfoWindows:true,polylineOptions:{strokeColor:"#2563eb",strokeWeight:8,strokeOpacity:.9}});
-    dirRenderer.setMap(gmap);
-  }catch(e){}
-  // Redraw all leads as plain dots
+  // Reset directions renderer completely
+  try{dirRenderer.setMap(null);}catch(e){}
+  dirRenderer=new google.maps.DirectionsRenderer({suppressMarkers:true,suppressInfoWindows:true,polylineOptions:{strokeColor:"#2563eb",strokeWeight:8,strokeOpacity:.9}});
+  dirRenderer.setMap(gmap);
+  // Show all leads as plain dots again
   leads.forEach(function(l){addMarker(l,null);});
   updateStats();closePanel();
 }
