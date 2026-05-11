@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta charset="UTF-8"/>
@@ -317,129 +316,127 @@ function openIn(id){
   h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">'+lead.address+"</div>";
   h+='<span class="lbl">NOTES</span>';
   h+='<textarea id="mn" class="inp" placeholder="Owner present, showed interest in taste test..." style="resize:none;height:80px;margin-top:4px;"></textarea>';
-
-h+=’<div style="display:flex;gap:8px;margin-top:14px;">’;
-h+=’<button onclick="confirmIn(\''+id+'\')" style="flex:1;padding:13px;background:#2563eb;border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK IN</button>’;
-h+=’<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>’;
-h+=”</div></div>”;
-document.getElementById(“panel”).innerHTML=h;
+  h+='<div style="display:flex;gap:8px;margin-top:14px;">';
+  h+='<button onclick="confirmIn(\''+id+'\')" style="flex:1;padding:13px;background:#2563eb;border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK IN</button>';
+  h+='<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
+  h+="</div></div>";
+  document.getElementById("panel").innerHTML=h;
 }
 
 function confirmIn(id){
-var n=document.getElementById(“mn”)?document.getElementById(“mn”).value:””;
-leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:“checked_in”,checkInTime:new Date().toLocaleTimeString(),checkedInAt:Date.now(),notes:n}):l;});
-save();
-var lead=leads.find(function(l){return l.id==id;});
-if(lead)addMarker(lead);
-updateStats();closePanel();
+  var n=document.getElementById("mn")?document.getElementById("mn").value:"";
+  leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:"checked_in",checkInTime:new Date().toLocaleTimeString(),checkedInAt:Date.now(),notes:n}):l;});
+  save();
+  var lead=leads.find(function(l){return l.id==id;});
+  if(lead)addMarker(lead);
+  updateStats();closePanel();
 }
 
 function openOut(id){
-var lead=leads.find(function(l){return l.id==id;});
-if(!lead)return;
-window._coStatus=“not_interested”;
-function render(){
-var h=’<div class="overlay"></div><div class="sheet">’;
-h+=’<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;">CHECKING OUT OF</div>’;
-h+=’<div style="font-size:18px;font-weight:700;margin:4px 0 2px;">’+lead.name+”</div>”;
-h+=’<div style="font-size:10px;color:#9ca3af;margin-bottom:12px;">’+lead.address+”</div>”;
-h+=’<span class="lbl">OUTCOME</span>’;
-h+=’<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px;">’;
-[“sale”,“not_interested”,“callback”,“no_answer”].forEach(function(s){
-var c=CFG[s],sel=window._coStatus==s;
-h+=’<button onclick=“window._coStatus='’+s+’';window._renderOut()” style=“padding:11px 7px;border-radius:8px;font-size:11px;font-weight:700;border:2px solid ‘+(sel?c.dot:”#374151”)+’;background:’+(sel?c.bg:”#111827”)+’;color:’+(sel?c.color:”#6b7280”)+’;”>’+c.label+”</button>”;
-});
-h+=”</div>”;
-h+=’<span class="lbl">NOTES</span>’;
-h+=’<textarea id="mn" class="inp" placeholder="Left brochure, will follow up..." style="resize:none;height:70px;margin-top:4px;">’+lead.notes+”</textarea>”;
-var cbg=window._coStatus==“sale”?”#16a34a”:window._coStatus==“callback”?”#d97706”:”#dc2626”;
-h+=’<div style="display:flex;gap:8px;margin-top:14px;">’;
-h+=’<button onclick="confirmOut(\''+id+'\',window._coStatus)" style="flex:1;padding:13px;background:'+cbg+';border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK OUT</button>’;
-h+=’<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>’;
-h+=”</div></div>”;
-document.getElementById(“panel”).innerHTML=h;
-window._renderOut=render;
-}
-render();
+  var lead=leads.find(function(l){return l.id==id;});
+  if(!lead)return;
+  window._coStatus="not_interested";
+  function render(){
+    var h='<div class="overlay"></div><div class="sheet">';
+    h+='<div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;">CHECKING OUT OF</div>';
+    h+='<div style="font-size:18px;font-weight:700;margin:4px 0 2px;">'+lead.name+"</div>";
+    h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:12px;">'+lead.address+"</div>";
+    h+='<span class="lbl">OUTCOME</span>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px;">';
+    ["sale","not_interested","callback","no_answer"].forEach(function(s){
+      var c=CFG[s],sel=window._coStatus==s;
+      h+='<button onclick="window._coStatus=\''+s+'\';window._renderOut()" style="padding:11px 7px;border-radius:8px;font-size:11px;font-weight:700;border:2px solid '+(sel?c.dot:"#374151")+';background:'+(sel?c.bg:"#111827")+';color:'+(sel?c.color:"#6b7280")+';">'+c.label+"</button>";
+    });
+    h+="</div>";
+    h+='<span class="lbl">NOTES</span>';
+    h+='<textarea id="mn" class="inp" placeholder="Left brochure, will follow up..." style="resize:none;height:70px;margin-top:4px;">'+lead.notes+"</textarea>";
+    var cbg=window._coStatus=="sale"?"#16a34a":window._coStatus=="callback"?"#d97706":"#dc2626";
+    h+='<div style="display:flex;gap:8px;margin-top:14px;">';
+    h+='<button onclick="confirmOut(\''+id+'\',window._coStatus)" style="flex:1;padding:13px;background:'+cbg+';border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">CONFIRM CHECK OUT</button>';
+    h+='<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
+    h+="</div></div>";
+    document.getElementById("panel").innerHTML=h;
+    window._renderOut=render;
+  }
+  render();
 }
 
 function confirmOut(id,status){
-var n=document.getElementById(“mn”)?document.getElementById(“mn”).value:””;
-leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:status,checkOutTime:new Date().toLocaleTimeString(),notes:n}):l;});
-save();
-var lead=leads.find(function(l){return l.id==id;});
-if(lead)addMarker(lead);
-updateStats();closePanel();
+  var n=document.getElementById("mn")?document.getElementById("mn").value:"";
+  leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:status,checkOutTime:new Date().toLocaleTimeString(),notes:n}):l;});
+  save();
+  var lead=leads.find(function(l){return l.id==id;});
+  if(lead)addMarker(lead);
+  updateStats();closePanel();
 }
 
 function reopenLead(id){
-leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:“pending”,checkInTime:null,checkOutTime:null,notes:””,checkedInAt:null}):l;});
-save();
-var lead=leads.find(function(l){return l.id==id;});
-if(lead)addMarker(lead);
-updateStats();closePanel();
+  leads=leads.map(function(l){return l.id==id?Object.assign({},l,{status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null}):l;});
+  save();
+  var lead=leads.find(function(l){return l.id==id;});
+  if(lead)addMarker(lead);
+  updateStats();closePanel();
 }
 
 function deleteLead(id){
-if(confirm(“Remove this business?”)){
-if(markers[id]){markers[id].setMap(null);delete markers[id];}
-leads=leads.filter(function(l){return l.id!=id;});
-save();updateStats();closePanel();
-}
+  if(confirm("Remove this business?")){
+    if(markers[id]){markers[id].setMap(null);delete markers[id];}
+    leads=leads.filter(function(l){return l.id!=id;});
+    save();updateStats();closePanel();
+  }
 }
 
 function openAdd(){
-var h=’<div class="overlay" onclick="closePanel()"></div><div class="sheet">’;
-h+=’<div style="font-size:15px;font-weight:700;margin-bottom:4px;">Add Business</div>’;
-h+=’<div style="font-size:10px;color:#9ca3af;margin-bottom:14px;">Manually add a walk-in lead</div>’;
-h+=’<span class="lbl">BUSINESS NAME</span><input id="nn" class="inp" placeholder="e.g. Fresh Cut Barbershop"/>’;
-h+=’<span class="lbl">ADDRESS</span><input id="na" class="inp" placeholder="e.g. 450 Jane St, Vaughan"/>’;
-h+=’<span class="lbl">TYPE</span><select id="nt" class="inp" style="margin-top:4px;">’;
-BTYPES.forEach(function(t){h+=”<option>”+t+”</option>”;});
-h+=”</select>”;
-h+=’<div style="display:flex;gap:8px;margin-top:16px;">’;
-h+=’<button onclick="confirmAdd()" style="flex:1;padding:13px;background:#16a34a;border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">ADD TO MAP</button>’;
-h+=’<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>’;
-h+=”</div></div>”;
-document.getElementById(“panel”).innerHTML=h;
+  var h='<div class="overlay" onclick="closePanel()"></div><div class="sheet">';
+  h+='<div style="font-size:15px;font-weight:700;margin-bottom:4px;">Add Business</div>';
+  h+='<div style="font-size:10px;color:#9ca3af;margin-bottom:14px;">Manually add a walk-in lead</div>';
+  h+='<span class="lbl">BUSINESS NAME</span><input id="nn" class="inp" placeholder="e.g. Fresh Cut Barbershop"/>';
+  h+='<span class="lbl">ADDRESS</span><input id="na" class="inp" placeholder="e.g. 450 Jane St, Vaughan"/>';
+  h+='<span class="lbl">TYPE</span><select id="nt" class="inp" style="margin-top:4px;">';
+  BTYPES.forEach(function(t){h+="<option>"+t+"</option>";});
+  h+="</select>";
+  h+='<div style="display:flex;gap:8px;margin-top:16px;">';
+  h+='<button onclick="confirmAdd()" style="flex:1;padding:13px;background:#16a34a;border:none;border-radius:10px;color:white;font-weight:900;font-size:13px;">ADD TO MAP</button>';
+  h+='<button onclick="closePanel()" style="padding:13px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:16px;">X</button>';
+  h+="</div></div>";
+  document.getElementById("panel").innerHTML=h;
 }
 
 function confirmAdd(){
-var n=document.getElementById(“nn”).value.trim();
-var a=document.getElementById(“na”).value.trim();
-var t=document.getElementById(“nt”).value;
-if(!n){alert(“Please enter a business name.”);return;}
-var geocoder=new google.maps.Geocoder();
-var addr=a?a+”, Ontario, Canada”:“Vaughan, Ontario, Canada”;
-geocoder.geocode({address:addr},function(results,status){
-var lat,lng;
-if(status==“OK”&&results[0]){
-lat=results[0].geometry.location.lat();
-lng=results[0].geometry.location.lng();
-} else {
-lat=myPos?myPos.lat+(Math.random()-.5)*.003:43.8361+(Math.random()-.5)*.02;
-lng=myPos?myPos.lng+(Math.random()-.5)*.003:-79.4983+(Math.random()-.5)*.03;
-}
-var lead={id:“manual_”+Date.now(),name:n,address:a,type:t,lat:lat,lng:lng,status:“pending”,checkInTime:null,checkOutTime:null,notes:””,checkedInAt:null};
-leads.push(lead);save();addMarker(lead);updateStats();
-gmap.setCenter({lat:lat,lng:lng});gmap.setZoom(16);
-closePanel();
-});
+  var n=document.getElementById("nn").value.trim();
+  var a=document.getElementById("na").value.trim();
+  var t=document.getElementById("nt").value;
+  if(!n){alert("Please enter a business name.");return;}
+  var geocoder=new google.maps.Geocoder();
+  var addr=a?a+", Ontario, Canada":"Vaughan, Ontario, Canada";
+  geocoder.geocode({address:addr},function(results,status){
+    var lat,lng;
+    if(status=="OK"&&results[0]){
+      lat=results[0].geometry.location.lat();
+      lng=results[0].geometry.location.lng();
+    } else {
+      lat=myPos?myPos.lat+(Math.random()-.5)*.003:43.8361+(Math.random()-.5)*.02;
+      lng=myPos?myPos.lng+(Math.random()-.5)*.003:-79.4983+(Math.random()-.5)*.03;
+    }
+    var lead={id:"manual_"+Date.now(),name:n,address:a,type:t,lat:lat,lng:lng,status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};
+    leads.push(lead);save();addMarker(lead);updateStats();
+    gmap.setCenter({lat:lat,lng:lng});gmap.setZoom(16);
+    closePanel();
+  });
 }
 
 function doReset(){
-if(confirm(“Reset all leads to Not Visited?”)){
-leads=leads.map(function(l){return Object.assign({},l,{status:“pending”,checkInTime:null,checkOutTime:null,notes:””,checkedInAt:null});});
-save();refreshMarkers();closePanel();
-}
+  if(confirm("Reset all leads to Not Visited?")){
+    leads=leads.map(function(l){return Object.assign({},l,{status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null});});
+    save();refreshMarkers();closePanel();
+  }
 }
 
-function addToRoute(id,name,addr,type,lat,lng){var existing=leads.find(function(l){return l.id==id;});if(existing){showLead(id);return;}var lead={id:id,name:name,address:addr,type:type,lat:lat,lng:lng,status:“pending”,checkInTime:null,checkOutTime:null,notes:””,checkedInAt:null};leads.push(lead);save();addMarker(lead);updateStats();showLead(id);}
-function addAndCheckIn(id,name,addr,type,lat,lng){var existing=leads.find(function(l){return l.id==id;});if(!existing){var lead={id:id,name:name,address:addr,type:type,lat:lat,lng:lng,status:“pending”,checkInTime:null,checkOutTime:null,notes:””,checkedInAt:null};leads.push(lead);save();addMarker(lead);updateStats();}openIn(id);}
-function closePanel(){document.getElementById(“panel”).innerHTML=””;}
+function addToRoute(id,name,addr,type,lat,lng){var existing=leads.find(function(l){return l.id==id;});if(existing){showLead(id);return;}var lead={id:id,name:name,address:addr,type:type,lat:lat,lng:lng,status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};leads.push(lead);save();addMarker(lead);updateStats();showLead(id);}
+function addAndCheckIn(id,name,addr,type,lat,lng){var existing=leads.find(function(l){return l.id==id;});if(!existing){var lead={id:id,name:name,address:addr,type:type,lat:lat,lng:lng,status:"pending",checkInTime:null,checkOutTime:null,notes:"",checkedInAt:null};leads.push(lead);save();addMarker(lead);updateStats();}openIn(id);}
+function closePanel(){document.getElementById("panel").innerHTML="";}
 </script>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCuDjbaMMwS8ivkxO5QZEXmeSOCQVGM9VY&libraries=places&callback=initMap" async defer></script>
-
 </body>
 </html>
