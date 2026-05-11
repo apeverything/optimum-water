@@ -37,7 +37,7 @@ input,select,textarea{font-family:monospace}
   </div>
   <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
     <button id="gpsBtn" onclick="toggleGps()" class="navbtn" style="background:#374151;color:#9ca3af;">GPS</button>
-    <button onclick="buildRoute()" class="navbtn" style="background:#7c3aed;color:white;">&#128205; Route</button>
+    <button onclick="showRoutePicker()" class="navbtn" style="background:#7c3aed;color:white;">&#128205; Route</button>
     <button onclick="searchNearby()" class="navbtn" style="background:#374151;color:#9ca3af;">Nearby</button>
     <button onclick="showList()" class="navbtn" style="background:#374151;color:#9ca3af;">List</button>
     <button onclick="openAdd()" class="navbtn" style="background:#2563eb;color:white;">+ Add</button>
@@ -249,7 +249,19 @@ function centerOnMe(){
 function resetNorth(){gmap.setHeading(0);gmap.setTilt(0);}
 
 // ROUTE BUILDER
-function buildRoute(){
+function showRoutePicker(){
+  if(!myPos){alert("Turn on GPS first!");return;}
+  var h='<div class="overlay" onclick="closePanel()"></div><div class="sheet">';
+  h+='<div style="font-size:17px;font-weight:700;margin-bottom:6px;">&#128205; Build Route</div>';
+  h+='<div style="font-size:11px;color:#9ca3af;margin-bottom:18px;">Choose how many stops to plan around you</div>';
+  h+='<div style="display:flex;flex-direction:column;gap:10px;">';
+  h+='<button onclick="buildRoute(5)" style="padding:16px;background:#1e3a5f;border:2px solid #3b82f6;border-radius:10px;color:white;font-size:14px;font-weight:700;text-align:left;"><div>&#9889; Quick - 5 Stops</div><div style="font-size:10px;color:#93c5fd;margin-top:3px;">Fast load &middot; nearby only</div></button>';
+  h+='<button onclick="buildRoute(10)" style="padding:16px;background:#1c1a00;border:2px solid #f59e0b;border-radius:10px;color:white;font-size:14px;font-weight:700;text-align:left;"><div>&#128336; Standard - 10 Stops</div><div style="font-size:10px;color:#fcd34d;margin-top:3px;">Balanced &middot; wider area</div></button>';
+  h+='<button onclick="buildRoute(15)" style="padding:16px;background:#052e16;border:2px solid #16a34a;border-radius:10px;color:white;font-size:14px;font-weight:700;text-align:left;"><div>&#128200; Full Day - 15 Stops</div><div style="font-size:10px;color:#86efac;margin-top:3px;">Max coverage &middot; larger radius</div></button>';
+  h+="</div></div>";
+  document.getElementById("panel").innerHTML=h;
+}
+function buildRoute(maxStops){
   if(!myPos){alert("Turn on GPS first so I know where you are!");return;}
   closePanel();
   document.getElementById("panel").innerHTML='<div class="overlay"></div><div class="sheet"><div style="text-align:center;padding:30px 20px;"><div class="spinner" style="width:32px;height:32px;border-width:3px;display:inline-block;"></div><div style="font-size:16px;font-weight:700;margin-top:16px;color:white;">Building Your Route</div><div style="font-size:11px;color:#9ca3af;margin-top:8px;">Finding 30 businesses near you<br>and optimizing driving order...</div></div></div>';
@@ -271,7 +283,7 @@ function buildRoute(){
       if(done==types.length){
         var pool=collected.map(function(b){return Object.assign({},b,{dist:hav(myPos.lat,myPos.lng,b.lat,b.lng)});}).sort(function(a,b){return a.dist-b.dist;}).slice(0,60);
         var route=[],cur={lat:myPos.lat,lng:myPos.lng};
-        while(route.length<30&&pool.length>0){
+        while(route.length<maxStops&&pool.length>0){
           var best=0,bd=9999;
           pool.forEach(function(b,i){var d=hav(cur.lat,cur.lng,b.lat,b.lng);if(d<bd){bd=d;best=i;}});
           var picked=pool.splice(best,1)[0];
