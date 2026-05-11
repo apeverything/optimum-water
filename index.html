@@ -95,8 +95,33 @@ var placesService,directionsService,directionsRenderer;
 // Car SVG icon facing direction
 function carIcon(heading){
   var h=heading||0;
-  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><g transform="rotate('+h+',24,24)"><ellipse cx="24" cy="24" rx="16" ry="20" fill="#1d4ed8"/><ellipse cx="24" cy="24" rx="14" ry="18" fill="#2563eb"/><ellipse cx="24" cy="16" rx="10" ry="7" fill="#93c5fd" opacity="0.9"/><rect x="10" y="34" width="7" height="5" rx="3" fill="#1e3a5f"/><rect x="31" y="34" width="7" height="5" rx="3" fill="#1e3a5f"/><rect x="10" y="9" width="7" height="5" rx="3" fill="#1e3a5f"/><rect x="31" y="9" width="7" height="5" rx="3" fill="#1e3a5f"/><circle cx="17" cy="37" r="4" fill="#111827" stroke="#374151" stroke-width="1"/><circle cx="31" cy="37" r="4" fill="#111827" stroke="#374151" stroke-width="1"/><circle cx="17" cy="11" r="4" fill="#111827" stroke="#374151" stroke-width="1"/><circle cx="31" cy="11" r="4" fill="#111827" stroke="#374151" stroke-width="1"/><ellipse cx="24" cy="38" rx="3" ry="2" fill="#fbbf24" opacity="0.9"/><ellipse cx="24" cy="10" rx="5" ry="2" fill="#fef08a" opacity="0.9"/><circle cx="24" cy="24" rx="3" ry="3" fill="#1e3a5f"/></g></svg>';
-  return {url:"data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(svg),scaledSize:new google.maps.Size(48,48),anchor:new google.maps.Point(24,24)};
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 52 52"><g transform="rotate('+h+',26,26)">'+
+    // Shadow
+    '<ellipse cx="26" cy="28" rx="13" ry="16" fill="rgba(0,0,0,0.3)" transform="translate(2,2)"/>'+
+    // Car body
+    '<ellipse cx="26" cy="26" rx="13" ry="18" fill="#1e40af"/>'+
+    // Roof highlight
+    '<ellipse cx="26" cy="22" rx="8" ry="9" fill="#2563eb"/>'+
+    // Windshield
+    '<ellipse cx="26" cy="18" rx="7" ry="6" fill="#93c5fd" opacity="0.85"/>'+
+    // Rear window  
+    '<ellipse cx="26" cy="33" rx="6" ry="4" fill="#60a5fa" opacity="0.5"/>'+
+    // Left front wheel
+    '<ellipse cx="14" cy="15" rx="4" ry="5" fill="#111827"/><ellipse cx="14" cy="15" rx="2.5" ry="3.5" fill="#374151"/>'+
+    // Right front wheel
+    '<ellipse cx="38" cy="15" rx="4" ry="5" fill="#111827"/><ellipse cx="38" cy="15" rx="2.5" ry="3.5" fill="#374151"/>'+
+    // Left rear wheel
+    '<ellipse cx="14" cy="37" rx="4" ry="5" fill="#111827"/><ellipse cx="14" cy="37" rx="2.5" ry="3.5" fill="#374151"/>'+
+    // Right rear wheel
+    '<ellipse cx="38" cy="37" rx="4" ry="5" fill="#111827"/><ellipse cx="38" cy="37" rx="2.5" ry="3.5" fill="#374151"/>'+
+    // Headlights
+    '<ellipse cx="20" cy="10" rx="3" ry="2" fill="#fef08a"/><ellipse cx="32" cy="10" rx="3" ry="2" fill="#fef08a"/>'+
+    // Taillights
+    '<ellipse cx="20" cy="42" rx="3" ry="2" fill="#ef4444"/><ellipse cx="32" cy="42" rx="3" ry="2" fill="#ef4444"/>'+
+    // Center stripe
+    '<rect x="24" y="12" width="4" height="28" rx="2" fill="#3b82f6" opacity="0.4"/>'+
+    '</g></svg>';
+  return {url:"data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(svg),scaledSize:new google.maps.Size(52,52),anchor:new google.maps.Point(26,26)};
 }
 
 function numIcon(num,color,done){
@@ -228,6 +253,8 @@ function toggleGps(){
       }
       if(trackingMode){
         gmap.setCenter(myPos);
+        gmap.setZoom(17);
+        gmap.setTilt(67.5);
         if(myHeading!=null)gmap.setHeading(myHeading);
       }
       updateNextStopBanner();
@@ -386,28 +413,93 @@ function showRoutePanel(route){
 function startNavigation(){
   if(!currentRoute||currentRoute.length==0)return;
   closePanel();
-  // Find first pending stop
   var firstPending=currentRoute.find(function(r){var l=leads.find(function(x){return x.id==r.id;});return l&&l.status=="pending";});
   if(!firstPending){alert("All stops completed!");return;}
-  // Enable tracking mode
+  // Turn on GPS tracking mode
   trackingMode=true;
   document.getElementById("ctrl-tracking").style.background="#7c3aed";
-  if(myPos){gmap.setCenter(myPos);gmap.setZoom(17);if(myHeading!=null)gmap.setHeading(myHeading);gmap.setTilt(45);}
-  // Show navigation bar
+  // Set map to navigation mode - tilt + follow
+  if(myPos){
+    gmap.setCenter({lat:myPos.lat,lng:myPos.lng});
+    gmap.setZoom(17);
+    gmap.setTilt(67.5);
+    if(myHeading!=null)gmap.setHeading(myHeading);
+  }
   updateNextStopBanner();
   document.getElementById("next-stop-banner").style.display="block";
-  // Open first stop
-  showLead(firstPending.id);
+  // Route to first stop using directions
+  if(myPos&&firstPending){
+    directionsService.route({
+      origin:new google.maps.LatLng(myPos.lat,myPos.lng),
+      destination:new google.maps.LatLng(firstPending.lat,firstPending.lng),
+      travelMode:google.maps.TravelMode.DRIVING
+    },function(result,status){
+      if(status==google.maps.DirectionsStatus.OK){
+        directionsRenderer.setDirections(result);
+      }
+    });
+  }
+  // Show nav HUD
+  showNavHUD(firstPending);
+}
+
+function showNavHUD(stop){
+  var idx=currentRoute.findIndex(function(r){return r.id==stop.id;});
+  var dist=myPos?hav(myPos.lat,myPos.lng,stop.lat,stop.lng):null;
+  var h='<div style="position:fixed;bottom:0;left:0;right:0;z-index:2000;">';
+  // Bottom nav card
+  h+='<div style="background:#0f172a;border-top:3px solid #2563eb;padding:16px 16px 20px;">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+  h+='<div style="font-size:9px;color:#60a5fa;text-transform:uppercase;letter-spacing:.1em;font-weight:700;">STOP '+(idx+1)+' OF '+currentRoute.length+'</div>';
+  h+='<div style="display:flex;gap:6px;">';
+  h+='<button onclick="showRoutePanel(currentRoute)" style="padding:5px 10px;background:#1e3a5f;border:none;border-radius:6px;color:#60a5fa;font-size:10px;font-weight:700;">&#128205; Route</button>';
+  h+='<button onclick="exitNav()" style="padding:5px 10px;background:#450a0a;border:none;border-radius:6px;color:#f87171;font-size:10px;font-weight:700;">Exit</button>';
+  h+="</div></div>";
+  h+='<div style="font-size:20px;font-weight:800;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+stop.name+"</div>";
+  h+='<div style="font-size:11px;color:#9ca3af;margin-top:3px;">'+stop.address+"</div>";
+  if(dist!=null)h+='<div style="font-size:24px;font-weight:900;color:#f59e0b;margin-top:6px;">'+fmt(dist)+'<span style="font-size:12px;color:#9ca3af;font-weight:400;margin-left:4px;">away</span></div>';
+  h+='<div style="display:flex;gap:8px;margin-top:12px;">';
+  h+='<button onclick="openIn(''+stop.id+'')" style="flex:1;padding:14px;background:#2563eb;border:none;border-radius:10px;color:white;font-weight:900;font-size:15px;">CHECK IN</button>';
+  h+='<button onclick="skipStop(''+stop.id+'')" style="padding:14px 16px;background:#374151;border:none;border-radius:10px;color:#9ca3af;font-size:12px;">Skip</button>';
+  h+="</div></div></div>";
+  document.getElementById("panel").innerHTML=h;
+}
+
+function skipStop(id){
+  var idx=currentRoute.findIndex(function(r){return r.id==id;});
+  if(idx<currentRoute.length-1){
+    var next=currentRoute[idx+1];
+    if(myPos){
+      directionsService.route({origin:new google.maps.LatLng(myPos.lat,myPos.lng),destination:new google.maps.LatLng(next.lat,next.lng),travelMode:google.maps.TravelMode.DRIVING},function(result,status){if(status==google.maps.DirectionsStatus.OK)directionsRenderer.setDirections(result);});
+    }
+    showNavHUD(next);
+  } else {
+    exitNav();
+    alert("Route complete!");
+  }
+}
+
+function exitNav(){
+  trackingMode=false;
+  document.getElementById("ctrl-tracking").style.background="#1f2937";
+  gmap.setTilt(0);gmap.setHeading(0);gmap.setZoom(14);
+  document.getElementById("next-stop-banner").style.display="none";
+  closePanel();
 }
 
 function clearRoute(){
-  directionsRenderer.setDirections({routes:[]});
-  // Remove all route numbered markers
-  currentRoute.forEach(function(r){if(markers[r.id]){markers[r.id].setMap(null);delete markers[r.id];}});
+  // Nuclear option - remove every marker from map
+  Object.keys(markers).forEach(function(k){if(markers[k])markers[k].setMap(null);});
+  markers={};
+  // Clear directions
+  try{directionsRenderer.setDirections({routes:[]});}catch(e){}
   currentRoute=[];routeActive=false;
+  trackingMode=false;
+  document.getElementById("ctrl-tracking").style.background="#1f2937";
   document.getElementById("route-badge").style.display="none";
   document.getElementById("next-stop-banner").style.display="none";
-  // Redraw remaining leads as plain dots
+  gmap.setTilt(0);gmap.setHeading(0);
+  // Redraw all leads fresh
   leads.forEach(function(l){addMarker(l,null);});
   updateStats();closePanel();
 }
@@ -493,7 +585,13 @@ function confirmIn(id){
   var lead=leads.find(function(l){return l.id==id;});
   var idx=currentRoute.findIndex(function(r){return r.id==id;});
   addMarker(lead,idx>=0?idx:null);
-  updateStats();updateNextStopBanner();closePanel();
+  updateStats();updateNextStopBanner();
+  // If in nav mode, show check out prompt immediately
+  if(routeActive&&trackingMode){
+    openOut(id);
+  } else {
+    closePanel();
+  }
 }
 
 function openOut(id){
@@ -533,10 +631,23 @@ function confirmOut(id,status){
   var idx=currentRoute.findIndex(function(r){return r.id==id;});
   addMarker(lead,idx>=0?idx:null);
   updateStats();updateNextStopBanner();
-  // Auto advance to next stop if in route
-  if(routeActive&&idx>=0&&idx<currentRoute.length-1){
-    var next=currentRoute[idx+1];
-    setTimeout(function(){showLead(next.id);},300);
+  // Auto advance in nav mode
+  if(routeActive&&idx>=0){
+    var remaining=currentRoute.filter(function(r,ri){
+      if(ri<=idx)return false;
+      var l=leads.find(function(x){return x.id==r.id;});
+      return l&&l.status=="pending";
+    });
+    if(remaining.length>0){
+      var next=remaining[0];
+      if(myPos){
+        directionsService.route({origin:new google.maps.LatLng(myPos.lat,myPos.lng),destination:new google.maps.LatLng(next.lat,next.lng),travelMode:google.maps.TravelMode.DRIVING},function(result,status){if(status==google.maps.DirectionsStatus.OK)directionsRenderer.setDirections(result);});
+      }
+      setTimeout(function(){showNavHUD(next);},300);
+    } else {
+      exitNav();
+      alert("Route complete! Great work!");
+    }
   } else {closePanel();}
 }
 
