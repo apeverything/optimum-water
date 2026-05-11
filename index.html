@@ -262,38 +262,65 @@ function showRoutePicker(){
   document.getElementById("panel").innerHTML=h;
 }
 function buildRoute(maxStops){
-  if(!myPos){alert("Turn on GPS first so I know where you are!");return;}
+  if(!myPos){alert("Turn on GPS first!");return;}
   closePanel();
-  document.getElementById("panel").innerHTML='<div class="overlay"></div><div class="sheet"><div style="text-align:center;padding:30px 20px;"><div class="spinner" style="width:32px;height:32px;border-width:3px;display:inline-block;"></div><div style="font-size:16px;font-weight:700;margin-top:16px;color:white;">Building Your Route</div><div style="font-size:11px;color:#9ca3af;margin-top:8px;">Finding '+maxStops+' stops &middot; optimizing driving order...</div></div></div>';
-  var types=[["restaurant"],["health"],["laundry"],["car_wash"],["bakery"],["spa"],["car_dealer"],["pharmacy"]];
-  var collected=[],done=0;
-  function search(typeArr){
-    placesService.nearbySearch({location:new google.maps.LatLng(myPos.lat,myPos.lng),radius:maxStops<=5?2000:maxStops<=10?4000:6000,type:typeArr},function(results,status){
-      done++;
-      if(status==google.maps.places.PlacesServiceStatus.OK&&results){
-        results.forEach(function(place){
-          if(!place.name||collected.find(function(c){return c.id==place.place_id;}))return;
-          var existing=leads.find(function(l){return l.id==place.place_id&&l.status!="pending";});
-          if(existing)return;
-          var t="Other";
-          if(place.types)place.types.forEach(function(pt){if(TYPE_MAP[pt]&&t=="Other")t=TYPE_MAP[pt];});
-          collected.push({id:place.place_id,name:place.name,address:place.vicinity||"",type:t,lat:place.geometry.location.lat(),lng:place.geometry.location.lng(),rating:place.rating||0});
+  document.getElementById("panel").innerHTML='<div class="overlay"></div><div class="sheet"><div style="text-align:center;padding:30px 20px;"><div class="spinner" style="width:32px;height:32px;border-width:3px;display:inline-block;"></div><div style="font-size:16px;font-weight:700;margin-top:16px;color:white;">Building '+maxStops+' Stop Route</div><div style="font-size:11px;color:#9ca3af;margin-top:8px;">Searching Google Maps around you...</div></div></div>';
+
+  var radius=maxStops<=5?1500:maxStops<=10?3000:5000;
+  var collected=[];
+  var searchTypes=["restaurant","health","laundry","car_wash","bakery","spa"];
+  var done=0;
+
+  function onResults(results,status){
+    done++;
+    if(results&&results.length){
+      results.forEach(function(place){
+        if(!place.name)return;
+        if(collected.find(function(c){return c.place_id==place.place_id;}))return;
+        // skip already visited
+        var ex=leads.find(function(l){return l.id==place.place_id&&l.status!="pending";});
+        if(ex)return;
+        var t="Other";
+        if(place.types)place.types.forEach(function(pt){if(TYPE_MAP[pt]&&t=="Other")t=TYPE_MAP[pt];});
+        collected.push({
+          place_id:place.place_id,
+          name:place.name,
+          address:place.vicinity||"",
+          type:t,
+          lat:place.geometry.location.lat(),
+          lng:place.geometry.location.lng(),
+          rating:place.rating||0
         });
+      });
+    }
+    if(done==searchTypes.length){
+      if(collected.length==0){
+        document.getElementById("panel").innerHTML="";
+        alert("No businesses found nearby. Try tapping Nearby first to load businesses, then build a route.");
+        return;
       }
-      if(done==types.length){
-        var pool=collected.map(function(b){return Object.assign({},b,{dist:hav(myPos.lat,myPos.lng,b.lat,b.lng)});}).sort(function(a,b){return a.dist-b.dist;}).slice(0,maxStops*4);
-        var route=[],cur={lat:myPos.lat,lng:myPos.lng};
-        while(route.length<maxStops&&pool.length>0){
-          var best=0,bd=9999;
-          pool.forEach(function(b,i){var d=hav(cur.lat,cur.lng,b.lat,b.lng);if(d<bd){bd=d;best=i;}});
-          var picked=pool.splice(best,1)[0];
-          route.push(picked);cur={lat:picked.lat,lng:picked.lng};
-        }
-        applyRoute(route);
+      // nearest-neighbor sort
+      var pool=collected.map(function(b){return Object.assign({},b,{dist:hav(myPos.lat,myPos.lng,b.lat,b.lng)});}).sort(function(a,b){return a.dist-b.dist;});
+      var route=[],cur={lat:myPos.lat,lng:myPos.lng};
+      while(route.length<maxStops&&pool.length>0){
+        var best=0,bd=9999;
+        pool.forEach(function(b,i){var d=hav(cur.lat,cur.lng,b.lat,b.lng);if(d<bd){bd=d;best=i;}});
+        var picked=pool.splice(best,1)[0];
+        // convert place_id to lead id format
+        var routeItem={id:picked.place_id,name:picked.name,address:picked.address,type:picked.type,lat:picked.lat,lng:picked.lng,rating:picked.rating};
+        route.push(routeItem);
+        cur={lat:picked.lat,lng:picked.lng};
       }
-    });
+      applyRoute(route);
+    }
   }
-  types.forEach(search);
+
+  searchTypes.forEach(function(type){
+    placesService.nearbySearch(
+      {location:new google.maps.LatLng(myPos.lat,myPos.lng),radius:radius,type:type},
+      onResults
+    );
+  });
 }
 
 function applyRoute(route){
