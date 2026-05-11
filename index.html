@@ -38,7 +38,6 @@ input,select,textarea{font-family:monospace}
   <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
     <button id="gpsBtn" onclick="toggleGps()" class="navbtn" style="background:#374151;color:#9ca3af;">GPS</button>
     <button onclick="showRoutePicker()" class="navbtn" style="background:#7c3aed;color:white;">&#128205; Route</button>
-    <button onclick="searchNearby()" class="navbtn" style="background:#374151;color:#9ca3af;">Nearby</button>
     <button onclick="showList()" class="navbtn" style="background:#374151;color:#9ca3af;">List</button>
     <button onclick="openAdd()" class="navbtn" style="background:#2563eb;color:white;">+ Add</button>
   </div>
@@ -64,10 +63,16 @@ input,select,textarea{font-family:monospace}
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 17H3a2 2 0 01-2-2V9a2 2 0 012-2h14l4 4v4a2 2 0 01-2 2h-2M5 17a2 2 0 100 4 2 2 0 000-4zM17 17a2 2 0 100 4 2 2 0 000-4z" stroke="#60a5fa" stroke-width="1.5"/></svg>
   </div>
   <!-- Next stop banner (shown when route active) -->
-  <div id="next-stop-banner" style="display:none;position:absolute;top:10px;left:10px;right:60px;background:rgba(124,58,237,.95);border-radius:10px;padding:10px 12px;cursor:pointer;backdrop-filter:blur(4px);" onclick="goNextStop()">
-    <div style="font-size:9px;color:#c084fc;text-transform:uppercase;letter-spacing:.1em;">NEXT STOP</div>
-    <div id="next-stop-name" style="font-size:14px;font-weight:700;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
-    <div id="next-stop-info" style="font-size:10px;color:#c084fc;margin-top:1px;"></div>
+  <div id="next-stop-banner" style="display:none;position:absolute;top:10px;left:10px;right:60px;background:rgba(15,23,42,.96);border:2px solid #2563eb;border-radius:12px;padding:12px 14px;cursor:pointer;backdrop-filter:blur(8px);box-shadow:0 4px 20px rgba(37,99,235,.4);" onclick="goNextStop()">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="width:32px;height:32px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">&#128205;</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:9px;color:#60a5fa;text-transform:uppercase;letter-spacing:.1em;font-weight:700;">NEXT STOP</div>
+        <div id="next-stop-name" style="font-size:14px;font-weight:800;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+        <div id="next-stop-info" style="font-size:10px;color:#93c5fd;margin-top:1px;"></div>
+      </div>
+      <div style="font-size:11px;color:#60a5fa;font-weight:700;flex-shrink:0;">TAP &#8594;</div>
+    </div>
   </div>
 </div>
 <div id="panel"></div>
@@ -114,7 +119,7 @@ function initMap(){
   });
   placesService=new google.maps.places.PlacesService(gmap);
   directionsService=new google.maps.DirectionsService();
-  directionsRenderer=new google.maps.DirectionsRenderer({suppressMarkers:true,polylineOptions:{strokeColor:"#7c3aed",strokeWeight:5,strokeOpacity:.85}});
+  directionsRenderer=new google.maps.DirectionsRenderer({suppressMarkers:true,suppressInfoWindows:true,polylineOptions:{strokeColor:"#2563eb",strokeWeight:8,strokeOpacity:.9}});
   directionsRenderer.setMap(gmap);
 
   gmap.addListener("click",function(e){
@@ -340,6 +345,11 @@ function applyRoute(route){
       if(status==google.maps.DirectionsStatus.OK)directionsRenderer.setDirections(result);
     });
   }
+  // Hide non-route lead dots to keep map clean
+  leads.forEach(function(l){
+    var inRoute=currentRoute.find(function(r){return r.id==l.id;});
+    if(!inRoute&&markers[l.id]){markers[l.id].setMap(null);}
+  });
   updateNextStopBanner();
   showRoutePanel(route);
 }
@@ -364,17 +374,42 @@ function showRoutePanel(route){
     h+='<div style="background:'+cfg.bg+';border-radius:20px;padding:2px 7px;flex-shrink:0;"><span style="font-size:8px;font-weight:700;color:'+cfg.color+';">'+cfg.label+"</span></div></div>";
   });
   var remaining=route.filter(function(r){var l=leads.find(function(x){return x.id==r.id;});return l&&l.status=="pending";}).length;
-  h+='<div style="text-align:center;padding:10px;font-size:10px;color:#6b7280;">'+remaining+" stops remaining</div>";
-  h+="</div>";
+  h+='<div style="text-align:center;padding:6px;font-size:10px;color:#6b7280;">'+remaining+" stops remaining</div>";
+  // START and CLEAR buttons
+  h+='<div style="display:flex;gap:8px;margin-top:10px;">';
+  h+='<button onclick="startNavigation()" style="flex:1;padding:14px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:10px;color:white;font-weight:900;font-size:15px;">&#9655; START ROUTE</button>';
+  h+='<button onclick="clearRoute()" style="padding:14px 16px;background:#450a0a;border:none;border-radius:10px;color:#f87171;font-size:12px;font-weight:700;">Clear</button>';
+  h+="</div></div>";
   document.getElementById("panel").innerHTML=h;
+}
+
+function startNavigation(){
+  if(!currentRoute||currentRoute.length==0)return;
+  closePanel();
+  // Find first pending stop
+  var firstPending=currentRoute.find(function(r){var l=leads.find(function(x){return x.id==r.id;});return l&&l.status=="pending";});
+  if(!firstPending){alert("All stops completed!");return;}
+  // Enable tracking mode
+  trackingMode=true;
+  document.getElementById("ctrl-tracking").style.background="#7c3aed";
+  if(myPos){gmap.setCenter(myPos);gmap.setZoom(17);if(myHeading!=null)gmap.setHeading(myHeading);gmap.setTilt(45);}
+  // Show navigation bar
+  updateNextStopBanner();
+  document.getElementById("next-stop-banner").style.display="block";
+  // Open first stop
+  showLead(firstPending.id);
 }
 
 function clearRoute(){
   directionsRenderer.setDirections({routes:[]});
+  // Remove all route numbered markers
+  currentRoute.forEach(function(r){if(markers[r.id]){markers[r.id].setMap(null);delete markers[r.id];}});
   currentRoute=[];routeActive=false;
   document.getElementById("route-badge").style.display="none";
   document.getElementById("next-stop-banner").style.display="none";
-  refreshMarkers();closePanel();
+  // Redraw remaining leads as plain dots
+  leads.forEach(function(l){addMarker(l,null);});
+  updateStats();closePanel();
 }
 
 function searchNearby(){
