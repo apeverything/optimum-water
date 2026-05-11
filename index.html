@@ -377,24 +377,58 @@ function showRoutePanel(){
 
 function startNavigation(){
   closePanel();
-  var first=currentRoute.find(function(r){var l=leads.find(function(x){return x.id==r.id;});return l&&l.status=="pending";});
-  if(!first){alert("All stops done!");return;}
+  var pending=currentRoute.filter(function(r){var l=leads.find(function(x){return x.id==r.id;});return l&&l.status=="pending";});
+  if(!pending.length){alert("All stops done!");return;}
+  var first=pending[0];
   trackingMode=true;
   document.getElementById("trackBtn").style.background="#7c3aed";
-  if(myPos){gmap.setCenter(myPos);gmap.setZoom(17);gmap.setTilt(67.5);gmap.setHeading(myHeading);}
+  if(myPos){gmap.setCenter(myPos);gmap.setZoom(16);gmap.setTilt(67.5);gmap.setHeading(myHeading);}
   navStopId=first.id;
-  routeToStop(first);
+  // Draw full route from current position through ALL pending stops
+  if(myPos&&pending.length>0){
+    var waypoints=pending.slice(1).slice(0,22).map(function(r){
+      return{location:new google.maps.LatLng(r.lat,r.lng),stopover:true};
+    });
+    dirSvc.route({
+      origin:new google.maps.LatLng(myPos.lat,myPos.lng),
+      destination:new google.maps.LatLng(pending[pending.length-1].lat,pending[pending.length-1].lng),
+      waypoints:waypoints,
+      optimizeWaypoints:false,
+      travelMode:google.maps.TravelMode.DRIVING
+    },function(result,status){
+      if(status==google.maps.DirectionsStatus.OK){
+        dirRenderer.setDirections(result);
+        // Fit map to show full route
+        if(!trackingMode){
+          gmap.fitBounds(result.routes[0].bounds);
+        }
+      }
+    });
+  }
   showNavHUD(first);
 }
 
 function routeToStop(stop){
   if(!myPos)return;
+  // Find remaining pending stops after this one to show full route
+  var stopIdx=currentRoute.findIndex(function(r){return r.id==stop.id;});
+  var remainingStops=currentRoute.slice(stopIdx+1).filter(function(r){
+    var l=leads.find(function(x){return x.id==r.id;});
+    return l&&l.status=="pending";
+  }).slice(0,22);
+  var waypoints=remainingStops.map(function(r){
+    return{location:new google.maps.LatLng(r.lat,r.lng),stopover:true};
+  });
   dirSvc.route({
     origin:new google.maps.LatLng(myPos.lat,myPos.lng),
     destination:new google.maps.LatLng(stop.lat,stop.lng),
+    waypoints:waypoints,
+    optimizeWaypoints:false,
     travelMode:google.maps.TravelMode.DRIVING
   },function(result,status){
-    if(status==google.maps.DirectionsStatus.OK)dirRenderer.setDirections(result);
+    if(status==google.maps.DirectionsStatus.OK){
+      dirRenderer.setDirections(result);
+    }
   });
 }
 
@@ -437,9 +471,21 @@ function exitNav(){
 
 function clearRoute(){
   exitNav();
-  clearAllMarkers();
+  // Force remove every single marker from the map
+  Object.keys(markers).forEach(function(k){
+    if(markers[k]&&markers[k].setMap)markers[k].setMap(null);
+  });
+  markers={};
   currentRoute=[];routeActive=false;
   document.getElementById("route-badge").style.display="none";
+  document.getElementById("nav-hud").style.display="none";
+  // Clear the blue route line
+  try{
+    dirRenderer.setMap(null);
+    dirRenderer=new google.maps.DirectionsRenderer({suppressMarkers:true,suppressInfoWindows:true,polylineOptions:{strokeColor:"#2563eb",strokeWeight:8,strokeOpacity:.9}});
+    dirRenderer.setMap(gmap);
+  }catch(e){}
+  // Redraw all leads as plain dots
   leads.forEach(function(l){addMarker(l,null);});
   updateStats();closePanel();
 }
